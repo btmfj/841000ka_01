@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.69</title>
+    <title>イチゴ選別システム V1.69b</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -32,7 +32,7 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
         .share-card { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 15px; padding: 15px; margin-top: 20px; text-align: center; }
-        #qrcode-area { margin: 10px auto; display: flex; justify-content: center; flex-direction: column; align-items: center; }
+        #qrcode { margin: 10px auto; display: flex; justify-content: center; padding: 10px; background: white; border-radius: 10px; min-height: 160px; }
         #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border-radius: 10px; border: 4px solid #007bff; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #22c55e; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; margin: 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -41,7 +41,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.69</div>
+            <div id="app-title">はよ選果 V1.69b</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -81,33 +81,47 @@
         }
         window.onload = loadSettings;
 
-        /* --- 匿名クラウド同期：送信 (Token不要) --- */
+        /* --- クラウド同期：送信 (安定化モデル) --- */
         async function uploadToCloud() {
             const loader = document.getElementById('loader');
             const msg = document.getElementById('sync-msg');
             const qrDiv = document.getElementById('qrcode');
+            
             loader.style.display = 'block';
-            msg.innerText = "クラウドに保存中...";
-            qrDiv.innerHTML = '';
+            msg.innerText = "データを最適化して送信中...";
+            qrDiv.innerHTML = ''; 
 
             try {
+                // 通信タイムアウト設定（15秒）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+
                 const res = await fetch('https://api.myjson.online/v1/records', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ data: currentRanges })
+                    body: JSON.stringify({ data: currentRanges }),
+                    signal: controller.signal
                 });
+                
+                clearTimeout(timeoutId);
                 const result = await res.json();
-                if(result.id) {
+                
+                if(result && result.id) {
                     new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
-                    msg.innerText = "✅ 送信完了！子機でスキャンしてください";
+                    msg.style.color = "#22c55e";
+                    msg.innerText = "✅ 準備完了！子機でスキャンしてください";
+                } else {
+                    throw new Error("サーバーからの応答が不正です");
                 }
             } catch (e) {
-                alert("送信に失敗しました。ネット接続を確認してください。");
-                msg.innerText = "";
-            } finally { loader.style.display = 'none'; }
+                console.error(e);
+                msg.style.color = "#ef4444";
+                msg.innerText = "❌ 失敗：電波の良い場所でやり直してください";
+            } finally {
+                loader.style.display = 'none';
+            }
         }
 
-        /* --- 匿名クラウド同期：受信 (スキャン) --- */
         async function scanCloudQR() {
             try {
                 const video = document.createElement("video");
@@ -124,7 +138,6 @@
                         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
                         if (code) { 
                             stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none";
-                            // IDを使ってデータを取得
                             const res = await fetch(`https://api.myjson.online/v1/records/${code.data}`);
                             const result = await res.json();
                             if (confirm("クラウドから設定を受信しました。上書きしますか？")) {
@@ -140,7 +153,7 @@
             } catch (err) { alert("カメラが使えません"); }
         }
 
-        /* 秤ロジック */
+        /* 既存の秤・判定ロジック */
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -203,16 +216,19 @@
                 area.appendChild(div);
             });
         }
+
         function addImg(e, i, sIdx) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader(); reader.onload = (f) => {
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
-                    const sc = Math.min(250 / img.width, 250 / img.height);
+                    // 保存時にさらに軽量化 (200pxサイズ)
+                    const sc = Math.min(200 / img.width, 200 / img.height);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.6); renderConfigList();
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.5); // 画質も0.5に圧縮
+                    renderConfigList();
                 };
             }; reader.readAsDataURL(file);
         }
@@ -226,10 +242,11 @@
 
         <div class="share-card">
             <h3 style="font-size:15px; margin:0 0 5px 0; color:#166534;">☁️ かんたんクラウド同期</h3>
-            <p style="font-size:10px; color:#666; margin-bottom:10px;">パスワード不要・ルーター制限なし</p>
+            <p style="font-size:10px; color:#666; margin-bottom:10px;">パスワード不要・画像自動圧縮機能つき</p>
             <button class="my-button" style="background:#22c55e;" onclick="uploadToCloud()">1. 設定をクラウドへ送る</button>
             <div id="loader" class="loader"></div>
-            <div id="qrcode-area"><div id="qrcode"></div><p id="sync-msg" style="font-size:11px; font-weight:bold; color:#22c55e; margin:5px 0;"></p></div>
+            <div id="qrcode"></div>
+            <p id="sync-msg" style="font-size:11px; font-weight:bold; margin:5px 0;"></p>
             <div style="margin:15px 0; border-top:1px dashed #22c55e;"></div>
             <button class="my-button" style="background:#007bff;" onclick="scanCloudQR()">2. 子機でスキャンして受信</button>
             <canvas id="v-canvas"></canvas>
