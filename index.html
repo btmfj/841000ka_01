@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.71c</title>
+    <title>イチゴ選別システム V1.72</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -41,7 +41,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.71c</div>
+            <div id="app-title">はよ選果 V1.72</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -70,6 +70,8 @@
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+        
+        // 【重要】いただいた本番用URLをセット済みです
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwyenDfL594vt_ymgUkJryrdeNGMdG-qxVtGPHb0Bi0YrWbzL0L9jaAucKp42Jucw4/exec";
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
@@ -83,33 +85,29 @@
         }
         window.onload = loadSettings;
 
-        /* --- GAS同期システム：送信 (安定化版) --- */
-        function syncToGas() {
+        /* --- GAS同期システム：送信 (画質維持モデル) --- */
+        async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "高画質データを送信中..."; qrDiv.innerHTML = '';
             
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", GAS_URL, true);
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4) {
-                    loader.style.display = 'none';
-                    if (xhr.status === 200 || xhr.status === 0) { // status 0 はリダイレクト成功時
-                        try {
-                            const result = JSON.parse(xhr.responseText);
-                            if (result.id) {
-                                new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
-                                msg.style.color = "#22c55e";
-                                msg.innerText = "✅ 同期QRを発行しました！";
-                            }
-                        } catch(e) { 
-                            msg.innerText = "❌ 応答エラー：GASのデプロイをやり直してください";
-                        }
-                    } else {
-                        msg.innerText = "❌ 送信失敗：Googleのブロックが発生しました";
-                    }
+            try {
+                // 画像データを含む設定全体をGASへPOST送信
+                const res = await fetch(GAS_URL, {
+                    method: "POST",
+                    body: JSON.stringify(currentRanges)
+                });
+                const result = await res.json();
+                
+                if (result.id) {
+                    new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
+                    msg.style.color = "#22c55e";
+                    msg.innerText = "✅ 同期QRを発行しました！子機でスキャンしてください";
                 }
-            };
-            xhr.send(JSON.stringify(currentRanges));
+            } catch (e) {
+                console.error(e);
+                msg.style.color = "#ef4444";
+                msg.innerText = "❌ 送信失敗：通信環境かGASの権限設定を確認してください";
+            } finally { loader.style.display = 'none'; }
         }
 
         /* --- GAS同期システム：受信 --- */
@@ -129,10 +127,11 @@
                         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
                         if (code) { 
                             stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none";
+                            // IDを元にGASから高画質データを取得
                             fetch(`${GAS_URL}?id=${code.data}`)
                                 .then(res => res.json())
                                 .then(data => {
-                                    if (data && confirm("高画質設定を同期（上書き）しますか？")) {
+                                    if (data && data.length > 0 && confirm("高画質設定を同期（上書き）しますか？")) {
                                         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
                                         location.reload();
                                     }
@@ -146,7 +145,7 @@
             } catch (err) { alert("カメラ起動に失敗しました"); }
         }
 
-        /* 既存ロジック（秤・表示・判定） */
+        /* 秤・判定ロジック */
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -218,6 +217,7 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
+                    // 画像サイズを350pxに維持（画質を損なわず同期可能なサイズ）
                     const sc = Math.min(350 / img.width, 350 / img.height);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
@@ -229,7 +229,7 @@
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定・GAS同期</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定・Google同期</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px; border:1px solid #ccc;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 本体に保存</button>
