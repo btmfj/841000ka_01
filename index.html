@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.43</title>
+    <title>イチゴ選別システム V1.44</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -19,7 +19,7 @@
         #flash-overlay { 
             position: fixed; 
             top: 0; left: 0; 
-            width: 100%; height: 100%; /* vwから%に変更 */
+            width: 100%; height: 100%; 
             z-index: 500; 
             display: none; 
             box-sizing: border-box;
@@ -27,7 +27,7 @@
         
         #flash-overlay.is-active {
             display: flex;
-            flex-direction: column; /* 縦画面デフォルト */
+            flex-direction: column;
         }
 
         #flash-text-cell {
@@ -35,12 +35,12 @@
             justify-content: center;
             align-items: center;
             width: 100%;
-            height: 25%; /* vhから%に変更 */
+            height: 25%;
         }
 
         #flash-img-cell {
             width: 100%;
-            height: 75%; /* vhから%に変更 */
+            height: 75%;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -53,10 +53,9 @@
             margin: 0;
         }
         
-        /* 画像を置く絶対座標の「基準（親）」になる箱 */
         #flash-img-container { 
             width: 100%; height: 100%;
-            position: relative; /* 絶対配置の基準点 */
+            position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -69,7 +68,7 @@
             border-radius: 10px;
         }
 
-        /* 縦画面1枚：絶対座標でド真ん中に全画面表示 */
+        /* 縦画面1枚：スマホ縦画面の下75%をフル活用 */
         .single-image-mode .flash-img-item {
             position: absolute;
             top: 50%; left: 50%;
@@ -79,32 +78,28 @@
             border-radius: 0;
         }
 
-        /* --- V1.43 重要：横向き（Landscape）の「%」と「絶対座標」設定 --- */
+        /* --- V1.44 横向き（Landscape）：画像サイズを限界まで拡大 --- */
         @media screen and (orientation: landscape) {
             #flash-overlay.is-active {
                 flex-direction: row; 
             }
             
-            #flash-text-cell {
-                width: 50%; height: 100%; /* vwを使わず厳密に半分の50% */
-            }
-            
-            #flash-img-cell {
-                width: 50%; height: 100%; /* vwを使わず厳密に半分の50% */
-            }
+            #flash-text-cell { width: 50%; height: 100%; }
+            #flash-img-cell { width: 50%; height: 100%; }
 
             #flash-text { font-size: 25vh; }
 
-            /* 横画面1枚：右セルの座標X:50% Y:50% にピン留め */
+            /* 横画面1枚：右エリアの縦または横、どちらか一杯になるまで拡大 */
             .single-image-mode .flash-img-item {
                 position: absolute !important;
                 top: 50% !important;
                 left: 50% !important;
                 transform: translate(-50%, -50%) !important;
-                width: auto !important;
-                height: auto !important;
-                max-width: 95% !important;
-                max-height: 95% !important;
+                /* 枠いっぱい（100%）に指定 */
+                width: 100% !important; 
+                height: 100% !important;
+                max-width: 100% !important; 
+                max-height: 100% !important;
                 border-radius: 10px;
             }
 
@@ -112,7 +107,7 @@
             .btn-container { width: 35%; }
         }
 
-        /* UI（略） */
+        /* UIパーツ */
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
@@ -126,7 +121,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.43</div>
+            <div id="app-title">はよ選果 V1.44</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -148,16 +143,12 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script>
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         let currentMode = "pre", currentRanges = [], sounds = { "START": new Audio("./start.mp3") };
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
-        let peer = null;
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
