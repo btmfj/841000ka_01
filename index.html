@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.69b</title>
+    <title>イチゴ選別システム V1.69c</title>
     <style>
+        /* スタイルはV1.69bを継承 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; }
@@ -32,7 +33,7 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
         .share-card { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 15px; padding: 15px; margin-top: 20px; text-align: center; }
-        #qrcode { margin: 10px auto; display: flex; justify-content: center; padding: 10px; background: white; border-radius: 10px; min-height: 160px; }
+        #qrcode { margin: 10px auto; display: flex; justify-content: center; background: white; padding: 10px; min-height: 160px; }
         #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border-radius: 10px; border: 4px solid #007bff; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #22c55e; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; margin: 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -41,7 +42,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.69b</div>
+            <div id="app-title">はよ選果 V1.69c</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -81,45 +82,64 @@
         }
         window.onload = loadSettings;
 
-        /* --- クラウド同期：送信 (安定化モデル) --- */
+        /* --- クラウド同期：送信（超軽量化モデル） --- */
         async function uploadToCloud() {
             const loader = document.getElementById('loader');
             const msg = document.getElementById('sync-msg');
             const qrDiv = document.getElementById('qrcode');
             
             loader.style.display = 'block';
-            msg.innerText = "データを最適化して送信中...";
+            msg.innerText = "データサイズを確認中...";
             qrDiv.innerHTML = ''; 
 
             try {
-                // 通信タイムアウト設定（15秒）
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                // 送信前に全画像を100pxまで極限圧縮して軽量化
+                const tinyData = JSON.parse(JSON.stringify(currentRanges));
+                msg.innerText = "写真を極小サイズに圧縮中...";
+                
+                for (let r of tinyData) {
+                    for (let i = 0; i < 4; i++) {
+                        if (r.images[i]) {
+                            r.images[i] = await shrinkImage(r.images[i]);
+                        }
+                    }
+                }
 
+                msg.innerText = "クラウドへ送信中...";
                 const res = await fetch('https://api.myjson.online/v1/records', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ data: currentRanges }),
-                    signal: controller.signal
+                    body: JSON.stringify({ data: tinyData })
                 });
                 
-                clearTimeout(timeoutId);
                 const result = await res.json();
-                
                 if(result && result.id) {
                     new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
                     msg.style.color = "#22c55e";
-                    msg.innerText = "✅ 準備完了！子機でスキャンしてください";
+                    msg.innerText = "✅ 成功！子機で写してください";
                 } else {
-                    throw new Error("サーバーからの応答が不正です");
+                    throw new Error();
                 }
             } catch (e) {
-                console.error(e);
                 msg.style.color = "#ef4444";
-                msg.innerText = "❌ 失敗：電波の良い場所でやり直してください";
-            } finally {
-                loader.style.display = 'none';
-            }
+                msg.innerText = "❌ 失敗：写真が多すぎるか電波不足です";
+            } finally { loader.style.display = 'none'; }
+        }
+
+        // 送信直前の極限圧縮 (100px)
+        function shrinkImage(base64Str) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const scale = Math.min(100 / img.width, 100 / img.height);
+                    canvas.width = img.width * scale; canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.4));
+                };
+                img.src = base64Str;
+            });
         }
 
         async function scanCloudQR() {
@@ -130,7 +150,6 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
                 canvas.style.display = "block";
-
                 const tick = async () => {
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
                         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
@@ -153,7 +172,7 @@
             } catch (err) { alert("カメラが使えません"); }
         }
 
-        /* 既存の秤・判定ロジック */
+        /* 既存の秤・ロジック */
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -223,12 +242,10 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
-                    // 保存時にさらに軽量化 (200pxサイズ)
                     const sc = Math.min(200 / img.width, 200 / img.height);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.5); // 画質も0.5に圧縮
-                    renderConfigList();
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.5); renderConfigList();
                 };
             }; reader.readAsDataURL(file);
         }
@@ -242,7 +259,7 @@
 
         <div class="share-card">
             <h3 style="font-size:15px; margin:0 0 5px 0; color:#166534;">☁️ かんたんクラウド同期</h3>
-            <p style="font-size:10px; color:#666; margin-bottom:10px;">パスワード不要・画像自動圧縮機能つき</p>
+            <p style="font-size:10px; color:#666; margin-bottom:10px;">パスワード不要・データ極限軽量化モデル</p>
             <button class="my-button" style="background:#22c55e;" onclick="uploadToCloud()">1. 設定をクラウドへ送る</button>
             <div id="loader" class="loader"></div>
             <div id="qrcode"></div>
