@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.48</title>
+    <title>イチゴ選別システム V1.49</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -66,7 +66,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.48</div>
+            <div id="app-title">はよ選果 V1.49</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -155,13 +155,23 @@
         }
         document.getElementById('tareBtn').onclick = () => { stableWeight = currentWeight; document.getElementById('diff-display').innerText = "リセット"; if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
 
-        /* --- 共有ロジック強化版 --- */
+        /* --- 設定共有ロジック V1.49 (Wi-Fi対応強化) --- */
         function initPeer() {
-            if (peer) peer.destroy();
+            if (peer) { peer.destroy(); peer = null; }
             const statusLabel = document.getElementById('peer-status-text');
-            if(statusLabel) statusLabel.innerText = "通信準備中...";
+            if(statusLabel) statusLabel.innerText = "通信サーバーに接続中...";
 
-            peer = new Peer();
+            // GoogleのSTUNサーバーを追加してWi-Fiの壁を越えやすくする
+            peer = new Peer({
+                config: {
+                    'iceServers': [
+                        { url: 'stun:stun.l.google.com:19302' },
+                        { url: 'stun:stun1.l.google.com:19302' },
+                        { url: 'stun:stun2.l.google.com:19302' }
+                    ]
+                }
+            });
+
             peer.on('open', (id) => { 
                 myPeerId = id; 
                 if(statusLabel) {
@@ -178,20 +188,19 @@
             });
             peer.on('error', (err) => {
                 console.error(err);
-                myPeerId = null;
                 if(statusLabel) {
-                    statusLabel.innerText = "× 接続エラー。再試行中...";
+                    statusLabel.innerText = "× 接続エラー。再試行します...";
                     statusLabel.style.color = "#dc3545";
                 }
-                setTimeout(initPeer, 3000); // エラー時は3秒後に再試行
+                myPeerId = null;
+                setTimeout(initPeer, 5000); 
             });
         }
 
         function createMyQR() {
             if(!myPeerId) {
-                alert("通信の準備がまだできていません。再接続を試みます。");
-                initPeer();
-                return;
+                alert("接続準備ができていません。再接続を試みます。");
+                initPeer(); return;
             }
             const qrDiv = document.getElementById('qrcode');
             qrDiv.innerHTML = '';
@@ -213,30 +222,23 @@
                         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-                        if (code) {
-                            stopScan(stream);
-                            sendSettingsTo(code.data);
-                            return;
-                        }
+                        if (code) { stopScan(stream); sendSettingsTo(code.data); return; }
                     }
                     if (scanning) requestAnimationFrame(tick);
                 };
                 requestAnimationFrame(tick);
-            } catch (err) { alert("カメラの起動に失敗しました: " + err); }
+            } catch (err) { alert("カメラ起動エラー: " + err); }
         }
         function stopScan(s) { scanning = false; s.getTracks().forEach(t => t.stop()); document.getElementById("v-canvas").style.display = "none"; }
         
         function sendSettingsTo(targetId) {
-            if (!peer || peer.destroyed) { alert("通信が切断されています。再読み込みしてください。"); return; }
+            if (!peer || peer.destroyed) { alert("通信が切れています。再読み込みしてください。"); return; }
             const c = peer.connect(targetId);
-            c.on('open', () => {
-                c.send(currentRanges);
-                alert("送信に成功しました！");
-            });
-            c.on('error', (err) => { alert("送信に失敗しました。相手がQR画面を開いているか確認してください。"); });
+            c.on('open', () => { c.send(currentRanges); alert("送信に成功しました！"); });
+            c.on('error', (err) => { alert("送信失敗。相手がQR表示中か確認してください。"); });
         }
 
-        /* 設定リスト */
+        /* 設定リスト・保存 */
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
