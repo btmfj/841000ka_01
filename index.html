@@ -2,266 +2,375 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.51</title>
-    <style>
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
-        #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
-        
-        #weight-section { text-align: center; margin: 0; flex-shrink: 0; }
-        #app-title { font-size: 14px; font-weight: bold; color: #d63031; margin: 0; }
-        #status { color: #555; font-size: 10px; margin: 0; }
-        #weight { font-size: 7vh; font-weight: bold; color: #00b300; line-height: 1; margin: 2px 0; }
-        #weight span { font-size: 2.5vh; color: #000; }
-        #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
-        
-        /* --- 判定表示 --- */
-        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
-        #flash-overlay.is-active { display: flex; flex-direction: column; }
-        #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 25%; }
-        #flash-img-cell { width: 100%; height: 75%; display: flex; justify-content: center; align-items: center; }
-        #flash-text { font-size: 12vh; font-weight: bold; color: #fff; -webkit-text-stroke: 1.5px #000; margin: 0; }
-        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; }
-        .flash-img-item { max-width: 98%; max-height: 98%; object-fit: contain; border-radius: 10px; }
-
-        .single-image-mode .flash-img-item {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 99%; height: 99%; max-width: 99%; max-height: 99%; border-radius: 0;
-        }
-
-        @media screen and (orientation: landscape) {
-            #flash-overlay.is-active { flex-direction: row; }
-            #flash-text-cell { width: 50%; height: 100%; }
-            #flash-img-cell { width: 50%; height: 100%; }
-            #flash-text { font-size: 25vh; }
-            .single-image-mode .flash-img-item {
-                position: absolute !important; top: 50% !important; left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                width: 99% !important; height: 99% !important;
-                max-width: 99% !important; max-height: 99% !important;
-            }
-            #app-container { flex-direction: row; }
-            .btn-container { width: 35%; }
-        }
-
-        .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; }
-        .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; }
-        #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
-        #tareBtn { background-color: #ff8c00; box-shadow: 0 3px #d97700; }
-        .mode-btn { flex: 1; height: 35px; border-radius: 8px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
-        .mode-btn.active { background: #d63031; color: #fff; }
-        
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-        .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-        .share-card { background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 15px; margin-top: 20px; text-align: center; }
-        #qrcode-area { margin: 10px auto; display: none; justify-content: center; flex-direction: column; align-items: center; }
-        #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border-radius: 10px; border: 3px solid #007bff; }
-        .action-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold; margin: 5px 0; color: white; }
-    </style>
-</head>
-<body>
-    <div id="app-container">
-        <div id="weight-section">
-            <div id="app-title">はよ選果 V1.51</div>
-            <div id="status">Bluetooth未接続</div>
-            <div id="weight">0.0<span>g</span></div>
-            <div id="diff-display">--.- g 減</div>
-        </div>
-        
-        <div id="flash-overlay">
-            <div id="flash-text-cell"><div id="flash-text"></div></div>
-            <div id="flash-img-cell"><div id="flash-img-container"></div></div>
-        </div>
-
-        <div class="btn-container">
-            <button id="connectBtn" class="my-button">① 接続・開始</button>
-            <button id="tareBtn" class="my-button">② 基準リセット</button>
-            <div style="display: flex; gap: 8px; margin: 3px 0;">
-                <button id="modePre" class="mode-btn active">事前選果</button>
-                <button id="modeDirect" class="mode-btn">直パック詰め</button>
-            </div>
-            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 35px; font-size: 13px;">🛠 設定・マスタ共有</button>
-        </div>
-    </div>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>イチゴ選別システム V1.05</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        body { background-color: #ffe4e1; color: #000; text-align: center; font-family: sans-serif; padding: 10px; overflow-x: hidden; }
+        #app-title { font-size: 28px; font-weight: bold; color: #d63031; margin-top: 5px; margin-bottom: 5px; letter-spacing: 2px; }
+        #status { color: #555; font-size: 14px; margin-bottom: 5px; }
+        #weight { font-size: 80px; font-weight: bold; color: #00b300; margin: 5px 0; }
+        #weight span { font-size: 24px; color: #000; }
+        #diff-display { font-size: 30px; color: #ff4757; height: 35px; }
+        
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; font-weight: bold; padding: 20px; box-sizing: border-box; }
+        @media screen and (orientation: landscape) { #flash-overlay { flex-direction: row; justify-content: space-around; } #flash-text { margin-bottom: 0 !important; margin-right: 20px; } #flash-img { max-width: 45% !important; max-height: 80% !important; } }
+        #flash-text { font-size: 140px; line-height: 1; margin-bottom: 20px; }
+        #flash-img { max-width: 80%; max-height: 50%; object-fit: contain; display: none; }
+
+        .btn-container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; }
+        .my-button { width: 95%; max-width: 400px; height: 70px; font-size: 22px; font-weight: bold; border-radius: 20px; border: none; color: white; margin: 5px 0; cursor: pointer; transition: 0.2s; }
+        #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
+        #tareBtn { background-color: #ff8c00; box-shadow: 0 4px #d97700; }
+        #settingsBtn { background-color: #6c757d; box-shadow: 0 4px #545b62; margin-top: 15px; height: 50px; font-size: 18px; }
+
+        .mode-container { display: flex; width: 95%; max-width: 400px; gap: 10px; margin-top: 5px; }
+        .mode-btn { flex: 1; height: 50px; font-size: 16px; font-weight: bold; border-radius: 15px; border: 2px solid #d63031; background-color: #fff; color: #d63031; cursor: pointer; }
+        .mode-btn.active { background-color: #d63031; color: #fff; box-shadow: inset 4px 4px 8px rgba(0,0,0,0.3); transform: translateY(2px); }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 200; overflow-y: auto; padding: 20px; box-sizing: border-box; text-align: left; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .modal-title { font-size: 22px; font-weight: bold; color: #d63031; }
+        
+        .config-row { border: 1px solid #ccc; border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #f9f9f9; }
+        .config-row input[type="number"] { width: 60px; padding: 5px; font-size: 16px; }
+        .config-row input[type="text"] { width: 90px; padding: 5px; font-size: 16px; }
+        
+        .img-preview { width: 60px; height: 60px; object-fit: cover; border: 1px solid #ccc; margin-left: 10px; display: none; border-radius: 5px; }
+        .file-input-label { background: #007bff; color: white; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 14px; display: inline-block; }
+        
+        .settings-footer { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .save-btn { background: #28a745; color: white; border: none; padding: 15px; border-radius: 10px; font-size: 18px; font-weight: bold; }
+        .sync-btn { background: #6f42c1; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; }
+
+        #qr-display-area, #scanner-container { display: none; text-align: center; border: 2px dashed #6f42c1; padding: 15px; margin-top: 15px; border-radius: 15px; background: #fdfaff; }
+        #qrcode { display: inline-block; margin: 10px 0; }
+        #scanner-video { width: 100%; max-width: 320px; border-radius: 10px; border: 2px solid #d63031; }
+        #sync-msg { color: #6f42c1; font-weight: bold; margin: 10px 0; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <video id="wake-lock-video" playsinline loop muted style="position:absolute;width:1px;height:1px;opacity:0.01;"></video>
+    <div id="app-title">はよ選果 V1.05</div>
+
+    <div id="flash-overlay">
+        <div id="flash-text"></div>
+        <img id="flash-img" src="" alt="size-image">
+    </div>
+
+    <div id="status">Bluetooth未接続</div>
+    <div id="weight">0.0<span>g</span></div>
+    <div id="diff-display">--.- g 減</div>
+    
+    <div class="btn-container">
+        <button id="connectBtn" class="my-button">① 接続・開始</button>
+        <button id="tareBtn" class="my-button">② 基準リセット</button>
+        <div class="mode-container">
+            <button id="modePre" class="mode-btn active">事前選果</button>
+            <button id="modeDirect" class="mode-btn">直パック詰め</button>
+        </div>
+        <button id="settingsBtn" class="my-button">🛠 設定・共有</button>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-header">
+            <div class="modal-title">マスタ設定</div>
+            <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
+        </div>
+        
+        <div id="config-list"></div>
+        <button onclick="addRangeRow()" style="width:100%; padding:10px; margin-top:10px; border-radius:8px; border:1px solid #ccc;">＋ 判定範囲を追加</button>
+
+        <div class="settings-footer">
+            <button class="save-btn" onclick="saveSettings()">✅ 設定をスマホに保存</button>
+            <div style="display:flex; gap:10px;">
+                <button class="sync-btn" style="flex:1;" onclick="startHost()">📡 送信待機</button>
+                <button class="sync-btn" style="flex:1; background:#007bff;" onclick="startScan()">📷 スキャン受信</button>
+            </div>
+        </div>
+
+        <div id="qr-display-area">
+            <div id="sync-msg">接続IDを発行中...</div>
+            <div id="qrcode"></div>
+            <p style="font-size:12px;">子機でこのQRをスキャンしてください。</p>
+            <button onclick="stopPeer()" style="padding:5px 10px;">中止</button>
+        </div>
+
+        <div id="scanner-container">
+            <div id="sync-msg-scan">QRコードを枠内に収めてください</div>
+            <video id="scanner-video" playsinline></video>
+            <canvas id="scanner-canvas" style="display:none;"></canvas>
+            <button onclick="stopScan()" style="margin-top:10px; padding:10px; background:#ff4757; color:white; border:none; border-radius:5px;">スキャン中止</button>
+        </div>
+    </div>
 
     <script>
-        const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-        let currentMode = "pre", currentRanges = [], sounds = {};
+        
+        let currentMode = "pre"; 
+        let currentRanges = [];
+        let imageCache = {};
+        let sounds = { "START": new Audio("./start.mp3") };
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
-        let peer = null, myPeerId = null, scanning = false;
+        let peer = null;
 
         function loadSettings() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", images: [null, null, null, null] }];
-            currentRanges.sort((a, b) => b.min - a.min);
-            currentRanges.forEach(r => { if(r.audio && !sounds[r.audio]) sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3"); });
-        }
-        window.onload = () => { loadSettings(); initPeer(); };
-
-        function showFlash(text, color, tColor, imgArray) {
-            const overlay = document.getElementById('flash-overlay'), fText = document.getElementById('flash-text'), imgContainer = document.getElementById('flash-img-container');
-            fText.innerText = text; overlay.style.backgroundColor = color;
-            imgContainer.innerHTML = ''; overlay.classList.remove('single-image-mode');
-            if (currentMode === "direct") {
-                const activeImages = imgArray.filter(src => src !== null);
-                if (activeImages.length > 0) {
-                    if (activeImages.length === 1) overlay.classList.add('single-image-mode');
-                    activeImages.forEach(src => {
-                        const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item';
-                        imgContainer.appendChild(img);
-                    });
-                }
+            const saved = localStorage.getItem('strawberry_config_v103');
+            currentRanges = saved ? JSON.parse(saved) : [];
+            if (currentRanges.length === 0) {
+                currentRanges = [{ min: 17.8, label: "2L大", audio: "2LD", image: null }];
             }
-            overlay.classList.add('is-active');
-            if (window.flashTimer) clearTimeout(window.flashTimer);
-            window.flashTimer = setTimeout(() => overlay.classList.remove('is-active'), currentMode === "pre" ? 1200 : 3500);
+            currentRanges.sort((a, b) => b.min - a.min);
+            imageCache = {};
+            currentRanges.forEach(r => {
+                if (r.audio) {
+                    sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3");
+                    sounds[r.audio].load();
+                }
+                if (r.image) {
+                    const img = new Image();
+                    img.src = r.image;
+                    imageCache[r.label] = img;
+                }
+            });
         }
 
-        /* Bluetooth */
-        let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
+        window.onload = loadSettings;
+
+        // Bluetooth周り
+        let bluetoothChar = null;
+        let currentWeight = 0, stableWeight = 0, weightHistory = [];
+
         document.getElementById('connectBtn').onclick = async () => {
             try {
-                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
+                sounds["START"].play();
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'はよ選果' }],
+                    optionalServices: [SERVICE_UUID]
+                });
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(SERVICE_UUID);
                 bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
                 await bluetoothChar.startNotifications();
                 document.getElementById('status').innerText = "✅ 稼働中";
                 bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
-                    const w = parseFloat(new TextDecoder().decode(e.target.value));
-                    currentWeight = w; document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
-                    weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
-                    if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
-                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) checkDifference(stableWeight, w); stableWeight = w; }
-                    }
+                    const val = new TextDecoder().decode(e.target.value);
+                    processWeight(parseFloat(val));
                 });
             } catch (err) { alert(err); }
         };
+
+        function processWeight(w) {
+            currentWeight = w;
+            document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
+            weightHistory.push(w);
+            if (weightHistory.length > 3) weightHistory.shift();
+            if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
+                if (Math.abs(stableWeight - w) > 0.5) {
+                    if (stableWeight > w) checkDifference(stableWeight, w);
+                    stableWeight = w;
+                }
+            }
+        }
+
         function checkDifference(oldW, newW) {
-            const diff = oldW - newW; if (diff < 5.0) return;
+            const diff = oldW - newW;
+            if (diff < 5.0) return;
             document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
             const match = currentRanges.find(r => diff >= r.min);
-            if (match) { showFlash(match.label, "#007bff", "#fff", match.images || []); if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); } }
-        }
-        document.getElementById('tareBtn').onclick = () => { stableWeight = currentWeight; document.getElementById('diff-display').innerText = "リセット"; if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
-
-        /* --- 設定共有 V1.51 (方向：親→子) --- */
-        function initPeer() {
-            if(peer) peer.destroy();
-            peer = new Peer({ config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]} });
-            peer.on('open', (id) => { myPeerId = id; });
-            
-            // 親側の挙動：誰かが接続してきたら自分のマスタを送信する
-            peer.on('connection', (conn) => {
-                conn.on('open', () => {
-                    conn.send(currentRanges);
-                    console.log("データを送信しました");
-                });
-            });
-            peer.on('error', () => { myPeerId = null; setTimeout(initPeer, 5000); });
+            if (match) {
+                showFlash(match.label, "#007bff", "#fff", match.label);
+                if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); }
+            }
         }
 
-        // 親：QRコードを表示する
-        function createMyQR() {
-            if(!myPeerId) { initPeer(); return alert("通信準備中... もう一度押してください"); }
-            const qrDiv = document.getElementById('qrcode');
-            qrDiv.innerHTML = '';
-            new QRCode(qrDiv, { text: myPeerId, width: 180, height: 180 });
-            document.getElementById('qrcode-area').style.display = 'flex';
+        function showFlash(text, color, tColor, imgKey) {
+            const overlay = document.getElementById('flash-overlay');
+            const fText = document.getElementById('flash-text');
+            const fImg = document.getElementById('flash-img');
+            fText.innerText = text;
+            fText.style.color = tColor;
+            overlay.style.backgroundColor = color;
+            if (currentMode === "direct" && imageCache[imgKey]) {
+                fImg.src = imageCache[imgKey].src;
+                fImg.style.display = 'block';
+            } else {
+                fImg.style.display = 'none';
+            }
+            overlay.style.display = 'flex';
+            if (window.flashTimer) clearTimeout(window.flashTimer);
+            window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 2000 : 3900);
         }
 
-        // 子：相手のQRを読み取って、データを受け取る
-        async function startQRScan() {
-            try {
-                const video = document.createElement("video");
-                const canvas = document.getElementById("v-canvas");
-                const ctx = canvas.getContext("2d");
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
-                canvas.style.display = "block"; scanning = true;
-                const tick = () => {
-                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        canvas.height = video.videoHeight; canvas.width = video.videoWidth;
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-                        if (code) { 
-                            scanning = false; stream.getTracks().forEach(t => t.stop()); 
-                            canvas.style.display = "none";
-                            
-                            // 相手(親)に接続
-                            const conn = peer.connect(code.data);
-                            // 相手(親)からデータが送られてくるのを待つ
-                            conn.on('data', (data) => {
-                                if (confirm("相手の設定マスタを受信しました。自分の設定を上書きしますか？")) {
-                                    currentRanges = data;
-                                    saveSettings();
-                                    renderConfigList();
-                                    alert("上書き完了しました！");
-                                }
-                            });
-                            return; 
-                        }
-                    }
-                    if (scanning) requestAnimationFrame(tick);
-                };
-                requestAnimationFrame(tick);
-            } catch (err) { alert("カメラ起動エラー"); }
-        }
+        document.getElementById('tareBtn').onclick = () => {
+            stableWeight = currentWeight;
+            document.getElementById('diff-display').innerText = "基準リセット";
+            if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
+        };
 
-        /* 共通関数 */
+        // 設定画面UI
+        function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
+        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; stopPeer(); stopScan(); }
+        document.getElementById('settingsBtn').onclick = openSettings;
+
         function renderConfigList() {
-            const area = document.getElementById('config-list'); area.innerHTML = '';
+            const area = document.getElementById('config-list');
+            area.innerHTML = '';
             currentRanges.forEach((r, i) => {
-                const div = document.createElement('div'); div.className = 'config-row';
-                let slots = '';
-                for(let j=0; j<4; j++){
-                    const img = r.images[j];
-                    slots += `<div style="position:relative; width:45px; height:45px; border:1px dashed #ccc; background:#eee;">${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover;"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>`:`<label style="cursor:pointer;font-size:12px;color:#007bff;display:flex;align-items:center;justify-content:center;height:100%;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
-                }
-                div.innerHTML = `<div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;"><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[i].min=parseFloat(this.value)" style="width:50px;">g〜 <input type="text" value="${r.label}" onchange="currentRanges[i].label=this.value" style="width:70px;"><select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select><button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto;background:red;color:white;border:none;padding:5px 10px;border-radius:5px;">削</button></div><div style="display:flex;gap:10px;">${slots}</div>`;
+                const div = document.createElement('div');
+                div.className = 'config-row';
+                div.innerHTML = `
+                    <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)">g以上:
+                    <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value">
+                    <select onchange="currentRanges[${i}].audio=this.value">
+                        ${availableAudios.map(a => `<option value="${a}" ${a===r.audio?'selected':''}>音:${a}</option>`).join('')}
+                    </select>
+                    <div style="margin-top:8px;">
+                        <label class="file-input-label">📷 写真<input type="file" style="display:none" onchange="handleImg(event, ${i})"></label>
+                        <img src="${r.image||''}" class="img-preview" id="pre-${i}" style="display:${r.image?'inline':'none'}">
+                        <button onclick="currentRanges.splice(${i},1);renderConfigList()" style="float:right; background:#ff4757; color:white; border:none; padding:5px 10px; border-radius:5px;">削除</button>
+                    </div>
+                `;
                 area.appendChild(div);
             });
         }
-        function addImg(e, i, sIdx) {
-            const file = e.target.files[0]; if(!file) return;
-            const reader = new FileReader(); reader.onload = (f) => {
-                const img = new Image(); img.src = f.target.result;
+
+        function addRangeRow() { currentRanges.push({min:10, label:"新", audio:"SS", image:null}); renderConfigList(); }
+
+        function handleImg(e, i) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                const img = new Image();
+                img.src = f.target.result;
                 img.onload = () => {
-                    const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
-                    const sc = Math.min(300 / img.width, 300 / img.height);
-                    cvs.width = img.width * sc; cvs.height = img.height * sc;
-                    ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.6); renderConfigList();
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const scale = Math.min(400 / img.width, 400 / img.height);
+                    canvas.width = img.width * scale; canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.6); // 圧縮率を少し下げて軽量化
+                    currentRanges[i].image = base64;
+                    renderConfigList();
                 };
-            }; reader.readAsDataURL(file);
+            };
+            reader.readAsDataURL(file);
         }
-        function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); }
-        document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
+
+        function saveSettings() {
+            localStorage.setItem('strawberry_config_v103', JSON.stringify(currentRanges));
+            loadSettings();
+            alert("保存しました");
+        }
+
+        // --- PeerJS 同期ロジック V1.05 (強化版) ---
+
+        function startHost() {
+            stopPeer();
+            const qrArea = document.getElementById('qr-display-area');
+            const msg = document.getElementById('sync-msg');
+            qrArea.style.display = 'block';
+            msg.innerText = "接続用IDを生成中...";
+
+            peer = new Peer();
+            peer.on('open', (id) => {
+                msg.innerText = "待機中... 子機でスキャンしてください";
+                const qrDiv = document.getElementById('qrcode');
+                qrDiv.innerHTML = '';
+                new QRCode(qrDiv, { text: "HAYO:" + id, width: 180, height: 180 });
+            });
+
+            peer.on('connection', (conn) => {
+                msg.innerText = "子機が接続しました。転送準備中...";
+                conn.on('open', () => {
+                    // 子機からの「READY」メッセージを待ってから送信する
+                    conn.on('data', (data) => {
+                        if (data === "READY") {
+                            msg.innerText = "データを送信しています...";
+                            conn.send({ type: "CONFIG", payload: JSON.stringify(currentRanges) });
+                            setTimeout(() => {
+                                alert("送信完了！");
+                                stopPeer();
+                            }, 500);
+                        }
+                    });
+                });
+            });
+            
+            peer.on('error', (err) => { alert("通信エラー: " + err.type); stopPeer(); });
+        }
+
+        function stopPeer() {
+            if (peer) { peer.destroy(); peer = null; }
+            document.getElementById('qr-display-area').style.display = 'none';
+        }
+
+        let vStream = null;
+        function startScan() {
+            document.getElementById('scanner-container').style.display = 'block';
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(s => {
+                vStream = s;
+                const v = document.getElementById('scanner-video');
+                v.srcObject = s; v.play();
+                requestAnimationFrame(tick);
+            }).catch(e => alert("カメラが起動できません: " + e));
+        }
+
+        function stopScan() {
+            if(vStream) vStream.getTracks().forEach(t => t.stop());
+            document.getElementById('scanner-container').style.display = 'none';
+        }
+
+        function tick() {
+            const v = document.getElementById('scanner-video');
+            if (v && v.readyState === v.HAVE_ENOUGH_DATA) {
+                const canvas = document.getElementById('scanner-canvas');
+                canvas.height = v.videoHeight; canvas.width = v.videoWidth;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+                const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data, canvas.width, canvas.height);
+                if (code && code.data.startsWith("HAYO:")) {
+                    const peerId = code.data.split(":")[1];
+                    document.getElementById('sync-msg-scan').innerText = "接続中...";
+                    stopScan();
+                    connectToPeer(peerId);
+                    return;
+                }
+            }
+            if(document.getElementById('scanner-container').style.display === 'block') requestAnimationFrame(tick);
+        }
+
+        function connectToPeer(id) {
+            const p = new Peer();
+            p.on('open', () => {
+                const conn = p.connect(id);
+                conn.on('open', () => {
+                    // 接続されたら「READY」を送る
+                    conn.send("READY");
+                    
+                    conn.on('data', (data) => {
+                        if (data && data.type === "CONFIG") {
+                            localStorage.setItem('strawberry_config_v103', data.payload);
+                            alert("設定と画像をすべて受信しました！\n反映のため再読み込みします。");
+                            location.reload();
+                        }
+                    });
+                });
+                
+                setTimeout(() => {
+                    if (p && !p.destroyed && !localStorage.getItem('sync_done')) {
+                        // 10秒経っても反応がなければ
+                    }
+                }, 10000);
+            });
+            p.on('error', (err) => alert("受信エラー: " + err.type));
+        }
+
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
-
-    <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定・共有</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
-        <div id="config-list" style="margin-top:10px;"></div>
-        <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
-        <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings();alert('保存完了');">✅ 設定を本体に保存</button>
-
-        <div class="share-card">
-            <h3 style="font-size:15px; margin:0 0 10px 0;">📡 マスタ共有 (テザリング推奨)</h3>
-            <button class="action-btn" style="background:#dc3545;" onclick="createMyQR()">1. 自分のQR(親)を表示する</button>
-            <div id="qrcode-area"><div id="qrcode"></div><p style="font-size:10px;color:#999;">この画面を相手に見せてください</p></div>
-            <div style="margin:15px 0; border-top:1px solid #dee2e6;"></div>
-            <button class="action-btn" style="background:#007bff;" onclick="startQRScan()">2. 相手のQR(親)を読み取る</button>
-            <p style="font-size:10px;color:#999;">読み取ると相手の設定をダウンロードします</p>
-            <canvas id="v-canvas"></canvas>
-        </div>
-    </div>
 </body>
 </html>
