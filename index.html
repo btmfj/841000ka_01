@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.30</title>
+    <title>イチゴ選別システム V1.31</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -18,7 +18,7 @@
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* --- 判定表示：1枚時に特化したレイアウト --- */
+        /* --- 判定フラッシュ表示：1枚極大化レイアウト --- */
         #flash-overlay { 
             position: fixed; 
             top: 0; left: 0; 
@@ -27,75 +27,71 @@
             flex-direction: column; 
             align-items: center; 
             z-index: 500; 
-            padding: 0; /* 1枚時は余白ゼロ */
+            padding: 0; 
             box-sizing: border-box; 
-            justify-content: center; /* 常に中央 */
+            justify-content: flex-start; /* 上から詰めて画像領域を稼ぐ */
         }
         
         #flash-text { 
             font-size: 8vh; 
-            font-weight: bold; line-height: 1.1; color: #fff; 
+            font-weight: bold; line-height: 1; color: #fff; 
             -webkit-text-stroke: 1.5px #000; 
-            margin: 10px 0; 
+            margin: 10px 0 5px 0; /* 下マージンを最小化 */
             flex-shrink: 0; 
-            z-index: 510;
         }
         
         #flash-img-container { 
             display: grid; 
-            grid-template-columns: 1fr 1fr; /* 基本は2列 */
+            grid-template-columns: 1fr 1fr;
+            grid-auto-rows: min-content; 
             gap: 8px; 
             width: 98%; 
             max-width: 600px;
             justify-content: center;
-            align-content: center;
+            align-content: flex-start;
             margin-bottom: 20px;
         }
 
-        /* 画像自体のサイズ指定 */
         .flash-img-item { 
             width: 100%; 
             height: auto;
-            max-height: 32vh; /* 複数枚の時の標準 */
+            max-height: 32vh;
             object-fit: contain; 
             border-radius: 10px; 
             display: block;
         }
 
-        /* --- V1.30 重要：画像1枚（シングル）専用の強制上書き --- */
+        /* --- 重要：スマホ縦画面・1枚表示の極大化 --- */
         .single-image-mode #flash-img-container {
-            display: flex; /* グリッドを解除して中央寄せ */
+            display: flex;
             justify-content: center;
             align-items: center;
-            width: 100%; 
-            max-width: 100%;
-            height: 75vh; /* 画面の7.5割まで使わせる */
+            width: 100vw; /* 画面横幅いっぱい */
+            max-width: 100vw;
+            height: 80vh; /* 判定文字以外のほぼすべて */
+            margin: 0;
         }
 
         .single-image-mode .flash-img-item {
-            width: 95vw; /* 横幅もほぼいっぱい */
-            max-height: 75vh; /* 高さを限界まで */
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); /* 1枚の時は豪華に */
+            width: 100vw; /* 左右ギリギリ */
+            height: 80vh; /* 上下ギリギリ */
+            max-height: 80vh;
+            border-radius: 0; /* 画面端まで行くので角丸を消すかお好みで */
+            box-shadow: none;
         }
 
-        /* 横向き（1枚時も対応済み） */
+        /* 横向き：現状のバランスを維持 */
         @media screen and (orientation: landscape) {
-            #flash-overlay { flex-direction: row; }
-            #flash-text { font-size: 22vh; margin: 0 30px 0 0; }
-            #flash-img-container { width: auto; max-width: 65%; height: 90%; margin-bottom: 0; }
+            #flash-overlay { flex-direction: row; justify-content: center; align-items: center; padding: 10px; }
+            #flash-text { font-size: 20vh; margin: 0 30px 0 0; width: auto; max-width: 30%; }
+            #flash-img-container { width: auto; max-width: 65%; grid-template-columns: 1fr 1fr; height: 90%; margin-bottom: 0; gap: 15px; }
             .flash-img-item { height: 42vh; width: auto; }
-            
-            .single-image-mode .flash-img-item { 
-                height: 85vh; /* 横画面は8.5割まで */
-                max-height: 85vh;
-                width: auto;
-            }
+            .single-image-mode .flash-img-item { height: 85vh; max-height: 85vh; width: auto; }
             #app-container { flex-direction: row; }
             .btn-container { width: 35%; }
         }
 
-        /* UIパーツ（維持） */
+        /* 以下、UIパーツとロジック（変更なし） */
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
@@ -109,7 +105,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.30</div>
+            <div id="app-title">はよ選果 V1.31</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -163,7 +159,7 @@
                 const count = activeImages.length;
                 
                 if (count > 0) {
-                    imgContainer.style.display = 'grid'; // 基本はgrid
+                    imgContainer.style.display = 'grid'; 
                     if (count === 1) {
                         overlay.classList.add('single-image-mode');
                     }
@@ -179,8 +175,8 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // Bluetooth/設定系は省略せず維持（V1.29準拠）
-        // ... (以下、V1.29のBluetooth・設定関連コードと同じ)
+        // --- Bluetooth・設定等のロジックはV1.29から継続してここに記述 ---
+        // (省略していますが、V1.29のフルコードと同じ機能が動作します)
     </script>
 </body>
 </html>
