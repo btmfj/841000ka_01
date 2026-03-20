@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.45</title>
+    <title>イチゴ選別システム V1.46</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -16,27 +16,14 @@
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
         /* --- 判定フラッシュ表示 --- */
-        #flash-overlay { 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            z-index: 500; 
-            display: none; 
-            box-sizing: border-box;
-        }
-        
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
-
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 25%; }
         #flash-img-cell { width: 100%; height: 75%; display: flex; justify-content: center; align-items: center; }
-
         #flash-text { font-size: 12vh; font-weight: bold; color: #fff; -webkit-text-stroke: 1.5px #000; margin: 0; }
-        
         #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; }
-
         .flash-img-item { max-width: 98%; max-height: 98%; object-fit: contain; border-radius: 10px; }
 
-        /* 縦画面1枚：99%サイズ */
         .single-image-mode .flash-img-item {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 99%; height: 99%; max-width: 99%; max-height: 99%; border-radius: 0;
@@ -47,8 +34,6 @@
             #flash-text-cell { width: 50%; height: 100%; }
             #flash-img-cell { width: 50%; height: 100%; }
             #flash-text { font-size: 25vh; }
-
-            /* 横画面1枚：99%サイズ */
             .single-image-mode .flash-img-item {
                 position: absolute !important; top: 50% !important; left: 50% !important;
                 transform: translate(-50%, -50%) !important;
@@ -68,17 +53,19 @@
         .mode-btn { flex: 1; height: 35px; border-radius: 8px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
         
-        /* 設定モーダル */
+        /* モーダル・共有UI */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-        .share-section { background: #f8f9fa; padding: 10px; border-radius: 8px; margin-top: 20px; border: 1px solid #ddd; }
+        .share-section { background: #f1f3f5; padding: 15px; border-radius: 12px; margin-top: 20px; border: 2px solid #dee2e6; text-align: center; }
+        #canvas { width: 100%; max-width: 300px; display: none; margin: 10px auto; border-radius: 8px; }
         #qrcode { margin: 10px auto; display: flex; justify-content: center; }
+        .camera-btn { background: #007bff; color: white; padding: 10px; border-radius: 8px; border: none; width: 100%; font-weight: bold; margin: 5px 0; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.45</div>
+            <div id="app-title">はよ選果 V1.46</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -96,25 +83,25 @@
                 <button id="modePre" class="mode-btn active">事前選果</button>
                 <button id="modeDirect" class="mode-btn">直パック詰め</button>
             </div>
-            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 30px; font-size: 12px;">🛠 設定・データ共有</button>
+            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 35px; font-size: 13px;">🛠 設定・マスタ共有</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 
     <script>
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-        let currentMode = "pre", currentRanges = [], sounds = { "START": new Audio("./start.mp3") };
+        let currentMode = "pre", currentRanges = [], sounds = {};
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
-        let peer = null, conn = null;
+        let peer = null, conn = null, scanning = false;
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
             currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", images: [null, null, null, null] }];
-            currentRanges.forEach(r => { if(!r.images) r.images = [null, null, null, null]; });
             currentRanges.sort((a, b) => b.min - a.min);
             currentRanges.forEach(r => { if(r.audio && !sounds[r.audio]) sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3"); });
         }
@@ -124,7 +111,6 @@
             const overlay = document.getElementById('flash-overlay'), fText = document.getElementById('flash-text'), imgContainer = document.getElementById('flash-img-container');
             fText.innerText = text; overlay.style.backgroundColor = color;
             imgContainer.innerHTML = ''; overlay.classList.remove('single-image-mode');
-            
             if (currentMode === "direct") {
                 const activeImages = imgArray.filter(src => src !== null);
                 if (activeImages.length > 0) {
@@ -140,7 +126,7 @@
             window.flashTimer = setTimeout(() => overlay.classList.remove('is-active'), currentMode === "pre" ? 1200 : 3500);
         }
 
-        /* --- Bluetooth接続 --- */
+        /* Bluetooth関連 */
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -151,7 +137,7 @@
                 await bluetoothChar.startNotifications();
                 document.getElementById('status').innerText = "✅ 稼働中";
                 bluetoothChar.addEventListener('characteristicvaluechanged', (e) => processWeight(parseFloat(new TextDecoder().decode(e.target.value))));
-            } catch (err) { alert("接続失敗: " + err); }
+            } catch (err) { alert(err); }
         };
 
         function processWeight(w) {
@@ -161,31 +147,73 @@
                 if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) checkDifference(stableWeight, w); stableWeight = w; }
             }
         }
-
         function checkDifference(oldW, newW) {
             const diff = oldW - newW; if (diff < 5.0) return;
             document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
             const match = currentRanges.find(r => diff >= r.min);
             if (match) { showFlash(match.label, "#007bff", "#fff", match.images || []); if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); } }
         }
-
         document.getElementById('tareBtn').onclick = () => { stableWeight = currentWeight; document.getElementById('diff-display').innerText = "リセット"; if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
 
-        /* --- 設定・保存・共有ロジック --- */
-        function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
-        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
-        document.getElementById('settingsBtn').onclick = openSettings;
+        /* 共有・PeerJS・カメラロジック */
+        function initPeer() {
+            peer = new Peer();
+            peer.on('open', (id) => {
+                document.getElementById('my-id').innerText = id;
+                const qrDiv = document.getElementById('qrcode'); qrDiv.innerHTML = '';
+                new QRCode(qrDiv, { text: id, width: 160, height: 160 });
+            });
+            peer.on('connection', (c) => {
+                c.on('data', (data) => {
+                    if (confirm("設定データを受信しました。現在の商品リストを上書きしますか？")) {
+                        currentRanges = data; saveSettings(); renderConfigList();
+                    }
+                });
+            });
+        }
 
+        async function startScan() {
+            const video = document.createElement("video");
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
+            canvas.style.display = "block"; scanning = true;
+            
+            const tick = () => {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.height = video.videoHeight; canvas.width = video.videoWidth;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+                    if (code) {
+                        document.getElementById('target-id').value = code.data;
+                        stopScan(stream); return;
+                    }
+                }
+                if (scanning) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }
+        function stopScan(stream) { scanning = false; stream.getTracks().forEach(track => track.stop()); document.getElementById("canvas").style.display = "none"; }
+
+        function sendData() {
+            const tid = document.getElementById('target-id').value;
+            if (!tid) return alert("送信先のIDを入力するかQRを読み取ってください");
+            const c = peer.connect(tid);
+            c.on('open', () => { c.send(currentRanges); alert("送信完了！"); });
+        }
+
+        /* 設定リスト操作 */
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
                 const div = document.createElement('div'); div.className = 'config-row';
-                let slotsHtml = '';
-                for(let j=0; j<4; j++) {
-                    const imgSrc = r.images[j];
-                    slotsHtml += `<div style="position:relative; width:45px; height:45px; border:1px dashed #999; display:flex; align-items:center; justify-content:center; background:#eee;">${imgSrc ? `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover;"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>` : `<label style="cursor:pointer;font-size:12px;color:#007bff;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
+                let slots = '';
+                for(let j=0; j<4; j++){
+                    const img = r.images[j];
+                    slots += `<div style="position:relative; width:45px; height:45px; border:1px dashed #ccc; background:#eee;">${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover;"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>`:`<label style="cursor:pointer;font-size:12px;color:#007bff;display:flex;align-items:center;justify-content:center;height:100%;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
-                div.innerHTML = `<div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;"><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:50px;">g〜<input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:70px;"><select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select><button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto; background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">削</button></div><div style="display:flex; gap:10px;">${slotsHtml}</div>`;
+                div.innerHTML = `<div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;"><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[i].min=parseFloat(this.value)" style="width:50px;">g〜 <input type="text" value="${r.label}" onchange="currentRanges[i].label=this.value" style="width:70px;"><select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select><button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto;background:red;color:white;border:none;padding:5px 10px;border-radius:5px;">削</button></div><div style="display:flex;gap:10px;">${slots}</div>`;
                 area.appendChild(div);
             });
         }
@@ -204,48 +232,32 @@
         }
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
 
-        /* --- PeerJS共有機能 --- */
-        function initPeer() {
-            peer = new Peer();
-            peer.on('open', (id) => {
-                document.getElementById('my-id-display').innerText = id;
-                const qrDiv = document.getElementById('qrcode'); qrDiv.innerHTML = '';
-                new QRCode(qrDiv, { text: id, width: 128, height: 128 });
-            });
-            peer.on('connection', (c) => {
-                c.on('data', (data) => {
-                    if (confirm("他の端末から設定を受信しました。上書きしますか？")) {
-                        currentRanges = data; saveSettings(); renderConfigList();
-                    }
-                });
-            });
-        }
-        function connectToPeer() {
-            const targetId = document.getElementById('target-id-input').value;
-            if (!targetId) return alert("送信先IDを入力してください");
-            const c = peer.connect(targetId);
-            c.on('open', () => { c.send(currentRanges); alert("設定を送信しました！"); });
-        }
-
+        document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定・データ共有</b><button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定・共有</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         
         <div id="config-list" style="margin-top:10px;"></div>
-        <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
+        <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
 
         <div class="share-section">
-            <p style="margin:0; font-size:12px; font-weight:bold;">この端末のID（受信・共有用）</p>
-            <div id="my-id-display" style="font-size:14px; color:#d63031; word-break:break-all; margin-bottom:5px;">--</div>
+            <h3 style="font-size:14px; margin:0 0 10px 0;">📡 マスタデータを共有する</h3>
+            <p style="font-size:11px; color:#666; margin-bottom:5px;">この端末の受信ID:</p>
+            <div id="my-id" style="font-weight:bold; color:#d63031; margin-bottom:10px; font-size:13px;">--</div>
             <div id="qrcode"></div>
-            <hr>
-            <p style="margin:5px 0; font-size:12px; font-weight:bold;">他の端末へ今の設定を送信する</p>
-            <input type="text" id="target-id-input" placeholder="相手のIDを入力" style="width:100%; box-sizing:border-box; padding:8px; border-radius:5px; border:1px solid #ccc;">
-            <button onclick="connectToPeer()" style="width:100%; background:#007bff; color:white; border:none; border-radius:8px; padding:10px; margin-top:5px;">設定データを送信</button>
+            
+            <hr style="border:0; border-top:1px solid #ccc; margin:15px 0;">
+            
+            <p style="font-size:11px; font-weight:bold; margin-bottom:5px;">【送信】相手のQRを読み取る</p>
+            <button class="camera-btn" onclick="startScan()">📷 カメラで読み取り開始</button>
+            <canvas id="canvas"></canvas>
+            
+            <input type="text" id="target-id" placeholder="相手のIDがここに入ります" style="width:100%; box-sizing:border-box; padding:10px; border-radius:5px; border:1px solid #ccc; margin-top:10px; text-align:center;">
+            <button onclick="sendData()" style="width:100%; background:#28a745; color:white; border:none; border-radius:8px; padding:12px; margin-top:10px; font-weight:bold;">📤 この設定を送信する</button>
         </div>
     </div>
 </body>
