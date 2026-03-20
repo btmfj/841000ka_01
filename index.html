@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.41</title>
+    <title>イチゴ選別システム V1.42</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -15,30 +15,35 @@
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* --- 判定フラッシュ表示 --- */
+        /* --- 判定フラッシュ表示（Grid方式の土台） --- */
         #flash-overlay { 
             position: fixed; 
             top: 0; left: 0; 
             width: 100vw; height: 100vh; 
             z-index: 500; 
-            display: none; 
-            flex-direction: column;
+            display: none; /* 初期は非表示 */
         }
         
+        /* JSで .is-active が付与された時の縦画面（Portrait）設定 */
+        #flash-overlay.is-active {
+            display: flex;
+            flex-direction: column;
+        }
+
         #flash-text-cell {
-            flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 100%;
+            width: 100vw;
+            height: 25vh; /* 縦画面：上25% */
         }
 
         #flash-img-cell {
-            flex: 3;
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 100%;
+            width: 100vw;
+            height: 75vh; /* 縦画面：下75% */
             overflow: hidden;
         }
 
@@ -46,6 +51,7 @@
             font-size: 12vh;
             font-weight: bold; color: #fff; 
             -webkit-text-stroke: 1.5px #000; 
+            margin: 0;
         }
         
         #flash-img-container { 
@@ -62,40 +68,43 @@
             border-radius: 10px;
         }
 
-        /* 縦画面1枚：全画面 */
+        /* 縦画面1枚：枠いっぱいに大きく */
         .single-image-mode .flash-img-item {
             width: 100%; height: 100%;
+            max-width: 100%; max-height: 100%;
             border-radius: 0;
         }
 
-        /* --- V1.41 重要：横向き（Landscape）の「左寄せ」設定 --- */
+        /* --- V1.42 重要：横向き（Landscape）の「鉄壁グリッド50/50」 --- */
         @media screen and (orientation: landscape) {
-            #flash-overlay { flex-direction: row; }
+            #flash-overlay.is-active {
+                display: grid !important;
+                grid-template-columns: 50vw 50vw; /* 画面を強制的に50%ずつに割る */
+                grid-template-rows: 100vh;
+            }
             
             #flash-text-cell {
-                flex: 1; /* 左側50% */
-                height: 100vh;
+                width: 50vw; height: 100vh;
             }
             
             #flash-img-cell {
-                flex: 1; /* 右側50% */
-                height: 100vh;
+                width: 50vw; height: 100vh;
+                /* 右セルの「完全なる中央」に画像を配置 */
                 display: flex !important;
-                justify-content: flex-start !important; /* ★ここを左寄せに（画面中央線に寄せる） */
-                align-items: center !important;     /* 上下は中央 */
-                padding-left: 5px; /* 中央線に密着しすぎないよう微調整 */
+                justify-content: center !important; /* 左右中央 */
+                align-items: center !important;     /* 上下中央 */
             }
 
             #flash-text { font-size: 25vh; }
 
+            /* 横画面1枚：右セルのど真ん中に、はみ出さないギリギリのサイズで配置 */
             .single-image-mode .flash-img-item {
                 width: auto !important;
                 height: auto !important;
-                max-width: 48vw !important; /* 右エリア幅いっぱい */
-                max-height: 95vh !important;
+                max-width: 95% !important; /* 50vwの95%まで */
+                max-height: 95% !important; /* 100vhの95%まで */
                 border-radius: 10px;
-                position: static !important;
-                transform: none !important;
+                margin: auto; /* 万が一のための自動余白 */
             }
 
             #app-container { flex-direction: row; }
@@ -116,7 +125,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.41</div>
+            <div id="app-title">はよ選果 V1.42</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -138,8 +147,10 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script>
-        // 設定読み込み・Bluetooth・判定ロジック（V1.40と同様）
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -160,6 +171,7 @@
             const overlay = document.getElementById('flash-overlay'), fText = document.getElementById('flash-text'), imgContainer = document.getElementById('flash-img-container');
             fText.innerText = text; overlay.style.backgroundColor = color;
             imgContainer.innerHTML = ''; overlay.classList.remove('single-image-mode');
+            
             if (currentMode === "direct") {
                 const activeImages = imgArray.filter(src => src !== null);
                 if (activeImages.length > 0) {
@@ -170,9 +182,12 @@
                     });
                 }
             }
-            overlay.style.display = 'flex';
+            
+            // V1.42修正: is-activeクラスで表示を切り替え
+            overlay.classList.add('is-active');
+            
             if (window.flashTimer) clearTimeout(window.flashTimer);
-            window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
+            window.flashTimer = setTimeout(() => overlay.classList.remove('is-active'), currentMode === "pre" ? 1200 : 3500);
         }
 
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
