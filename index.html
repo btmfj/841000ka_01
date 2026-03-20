@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.34</title>
+    <title>イチゴ選別システム V1.35</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -84,30 +84,30 @@
             margin: 0 !important;
         }
 
-        /* --- V1.34 重要：横向き・1枚表示の黄金比配置 --- */
+        /* --- V1.35 重要：横向き・1枚表示の完全二分割・中央配置 --- */
         @media screen and (orientation: landscape) {
             #flash-overlay { 
                 flex-direction: row; 
-                justify-content: flex-start; /* 左詰めベース */
+                justify-content: flex-start; 
                 align-items: center; 
                 padding: 0;
             }
             
-            /* 文字エリア：左から1/3 */
+            /* 文字エリア：真ん中で二分割した左側50% */
             #flash-text { 
                 font-size: 20vh; 
                 margin: 0; 
-                width: 33vw; /* 画面幅の1/3 */
+                width: 50vw; /* 画面幅の半分 */
                 display: flex;
                 justify-content: center; /* エリア内中央 */
                 align-items: center;
                 height: 100%;
             }
             
-            /* 画像エリア：右側2/3 */
+            /* 画像エリア：真ん中で二分割した右側50% */
             #flash-img-container { 
-                width: 66vw; /* 画面幅の2/3 */
-                max-width: 66vw;
+                width: 50vw; /* 画面幅の半分 */
+                max-width: 50vw;
                 height: 100%;
                 margin: 0;
                 grid-template-columns: 1fr 1fr; /* 複数枚用のデフォルト */
@@ -126,18 +126,24 @@
             /* --- 横向き・1枚（シングル）専用設定 --- */
             .single-image-mode #flash-img-container { 
                 display: flex !important; /* グリッド解除 */
-                justify-content: flex-end; /* 画像エリア内で「右寄せ」 */
-                padding-right: 5vw; /* 右端ギリギリ防止のわずかな余白 */
+                justify-content: center; /* 右エリア内で「中央寄せ」 */
+                align-items: center; /* 上下も中央 */
+                padding: 0 2vw; /* 左右に最低限の余白 */
                 box-sizing: border-box;
             }
             
             .single-image-mode .flash-img-item { 
-                height: 90vh; /* 限界まで大きく（V1.33は85vh） */
+                /* 限界まで大きく、比率は維持 */
+                width: 100%; /* 横長画像なら右エリア幅いっぱい */
+                max-width: 100%;
+                height: 90vh; /* 縦長画像なら画面高の9割いっぱい */
                 max-height: 90vh; 
-                width: auto; 
+                
+                object-fit: contain; /* 比率を崩さない */
                 position: static; 
                 transform: none; 
                 margin: 0; 
+                border-radius: 10px; /* 1枚でも角丸をつける */
             }
 
             #app-container { flex-direction: row; }
@@ -158,7 +164,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.34</div>
+            <div id="app-title">はよ選果 V1.35</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -325,7 +331,7 @@
         }
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
         function startHost() { document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中..."; if(peer) peer.destroy(); peer = new Peer(); peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; }); peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); }); }
-        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, canvas.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
+        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width,canvas.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
         function connectToHost(id) { const p = new Peer(); p.on('open', () => { const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); }); }); }
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
