@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.96</title>
+    <title>イチゴ選別システム V1.97</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -14,7 +14,7 @@
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* フラッシュ表示用 */
+        /* フラッシュ表示用レイヤー */
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 25%; }
@@ -30,6 +30,7 @@
         .mode-btn { flex: 1; height: 35px; border-radius: 8px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
         
+        /* 設定モーダル */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
         .share-card { background: #f0fdf4; border: 2px solid #10b981; border-radius: 15px; padding: 15px; margin-top: 20px; text-align: center; }
@@ -42,7 +43,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.96</div>
+            <div id="app-title">はよ選果 V1.97</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -72,7 +73,7 @@
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         
-        // --- ここにあなたのGAS URLを貼り付けてください ---
+        // ご提示いただいた最新のGAS URL
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxP6wh8nQMrWHM8CemmZPqRYCWT_NAMkt_FMpUX5WAIdya8WVX1RehGBwSn--kaSpBW/exec";
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
@@ -82,18 +83,24 @@
             const saved = localStorage.getItem(STORAGE_KEY);
             currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", images: [null, null, null, null] }];
             currentRanges.sort((a, b) => b.min - a.min);
-            currentRanges.forEach(r => { if(r.audio && !sounds[r.audio]) sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3"); });
+            currentRanges.forEach(r => { 
+                if(r.audio && !sounds[r.audio]) sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3"); 
+            });
         }
         window.onload = loadSettings;
 
-        // --- 判定ロジック ---
+        // --- 判定・フラッシュ表示 ---
         function checkDifference(oldW, newW) {
-            const diff = oldW - newW; if (diff < 5.0) return;
+            const diff = oldW - newW; 
+            if (diff < 5.0) return;
             document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
             const match = currentRanges.find(r => diff >= r.min);
             if (match) { 
                 showFlash(match.label, "#007bff", "#fff", match.images || []); 
-                if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); } 
+                if (sounds[match.audio]) { 
+                    sounds[match.audio].currentTime = 0; 
+                    sounds[match.audio].play(); 
+                } 
             }
         }
 
@@ -109,7 +116,9 @@
             }
             overlay.style.display = 'flex'; overlay.classList.add('is-active');
             if (window.flashTimer) clearTimeout(window.flashTimer);
-            window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('is-active'); }, currentMode === "pre" ? 1200 : 3500);
+            window.flashTimer = setTimeout(() => { 
+                overlay.style.display = 'none'; overlay.classList.remove('is-active'); 
+            }, currentMode === "pre" ? 1200 : 3500);
         }
 
         // --- Bluetooth接続 ---
@@ -124,32 +133,48 @@
                 document.getElementById('status').innerText = "✅ 稼働中";
                 bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
                     const w = parseFloat(new TextDecoder().decode(e.target.value));
-                    currentWeight = w; document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
-                    weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
+                    currentWeight = w; 
+                    document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
+                    weightHistory.push(w); 
+                    if (weightHistory.length > 3) weightHistory.shift();
                     if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
-                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) checkDifference(stableWeight, w); stableWeight = w; }
+                        if (Math.abs(stableWeight - w) > 0.5) { 
+                            if (stableWeight > w) checkDifference(stableWeight, w); 
+                            stableWeight = w; 
+                        }
                     }
                 });
             } catch (err) { alert("秤が見つかりません"); }
         };
 
-        // --- 同期ロジック ---
+        // --- 同期ロジック (V1.97 安定版) ---
         function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "クラウドへ送信中..."; qrDiv.innerHTML = '';
+
             const xhr = new XMLHttpRequest();
             xhr.open("POST", GAS_URL, true);
-            xhr.setRequestHeader("Content-Type", "text/plain;charset=utf-8");
+            // 修正版：もっとも汎用的な text/plain に指定
+            xhr.setRequestHeader("Content-Type", "text/plain");
+
             xhr.onload = function() {
                 loader.style.display = 'none';
                 if (xhr.status >= 200 && xhr.status < 400) {
-                    const result = JSON.parse(xhr.responseText);
-                    if (result.id) {
-                        new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
-                        msg.style.color = "#22c55e"; msg.innerText = "✅ 同期QRを発行しました！";
-                    }
-                } else { msg.innerText = "❌ エラー (" + xhr.status + ")"; }
+                    try {
+                        const result = JSON.parse(xhr.responseText);
+                        if (result.id) {
+                            new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
+                            msg.style.color = "#22c55e"; msg.innerText = "✅ 同期QRを発行しました！";
+                        }
+                    } catch(e) { msg.innerText = "❌ 応答解析失敗"; }
+                } else { msg.innerText = "❌ 送信失敗 (" + xhr.status + ")"; }
             };
+
+            xhr.onerror = function() {
+                loader.style.display = 'none';
+                msg.innerText = "❌ 通信遮断 (GASの承認が必要です)";
+            };
+
             xhr.send(JSON.stringify(currentRanges));
         }
 
@@ -165,12 +190,14 @@
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
                         if (code && code.data.length > 30) {
-                            stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none";
+                            stream.getTracks().forEach(t => t.stop()); 
+                            canvas.style.display = "none";
                             fetch(`${GAS_URL}?id=${code.data}`).then(res => res.json()).then(data => {
-                                if (data && data.length > 0 && confirm("同期しますか？")) {
-                                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
+                                if (data && data.length > 0 && confirm("画像を含む設定を同期しますか？")) {
+                                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); 
+                                    location.reload();
                                 }
-                            });
+                            }).catch(() => alert("読込に失敗しました"));
                             return; 
                         }
                     }
@@ -180,7 +207,7 @@
             } catch (err) { alert("カメラ起動失敗"); }
         }
 
-        /* --- 設定画面UI構築 --- */
+        /* --- 設定UI制御 --- */
         document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
         document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
@@ -209,26 +236,29 @@
                     const sc = Math.min(300 / img.width, 300 / img.height);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.8); renderConfigList();
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.8); 
+                    renderConfigList();
                 };
             }; reader.readAsDataURL(file);
         }
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between;"><b>マスタ設定 V1.96</b><button onclick="document.getElementById('settings-modal').style.display='none'">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定・同期 V1.97</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        
         <div id="config-list" style="margin-top:10px;"></div>
-        <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px;">＋ 判定範囲を追加</button>
+        <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #ccc;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
 
         <div class="share-card">
-            <h3>☁️ 画像込み・クラウド同期</h3>
-            <button class="my-button" style="background:#10b981;" onclick="syncToGas()">1. 親機：画像を送信</button>
+            <h3 style="margin:0;">☁️ 画像込み・クラウド同期</h3>
+            <p style="font-size:10px; margin-bottom:10px;">トークン不要：匿名掲示板方式</p>
+            <button class="my-button" style="background:#10b981;" onclick="syncToGas()">1. 親機：画像をクラウド送信</button>
             <div id="loader" class="loader"></div>
             <div id="qrcode"></div>
             <p id="sync-msg" style="font-size:11px;"></p>
-            <hr>
-            <button class="my-button" style="background:#3b82f6;" onclick="scanGasQR()">2. 子機：画像を読込</button>
+            <hr style="margin:15px 0; border:0; border-top:1px dashed #ccc;">
+            <button class="my-button" style="background:#3b82f6;" onclick="scanGasQR()">2. 子機：画像をクラウド読込</button>
             <canvas id="v-canvas"></canvas>
         </div>
     </div>
