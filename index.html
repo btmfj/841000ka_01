@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.26</title>
+    <title>イチゴ選別システム V1.27</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        /* Bluefy / iOS 対策：高さをvhではなく固定値に近い制限で管理 */
+        /* 全体レイアウト：固定幅を排除 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
-        
         #app-container { 
             height: 100%; 
             display: flex; 
@@ -18,6 +17,7 @@
             align-items: center; 
             padding: 5px; 
             box-sizing: border-box; 
+            width: 100%; /* 画面幅いっぱい使う */
         }
         
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; }
@@ -27,7 +27,7 @@
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* 判定オーバーレイ */
+        /* フラッシュオーバーレイ（判定表示） */
         #flash-overlay { 
             position: fixed; 
             top: 0; left: 0; 
@@ -49,13 +49,13 @@
             flex-shrink: 0; 
         }
         
-        /* --- V1.26 縦横切れないための強制サイズ指定 --- */
+        /* --- V1.27 画像を限界まで大きく --- */
         #flash-img-container { 
             display: grid; 
             grid-template-columns: 1fr 1fr;
             grid-auto-rows: 1fr; /* 全ての行の高さを均等に */
             gap: 6px; 
-            width: 90%; 
+            width: 95%; /* 左右ギリギリまで使う */
             margin: 0 auto;
             flex-shrink: 1;
             overflow: hidden;
@@ -63,32 +63,31 @@
 
         .flash-img-item { 
             width: 100%; 
-            height: 20vh; /* 縦画面時：1枚の高さを画面の2割に固定（2段で4割） */
+            height: 23vh; /* 縦画面時：1枚の高さを画面の2.3割に引き上げ（V1.26は20vh） */
             object-fit: contain; 
             border-radius: 8px; 
             display: block;
-            background: rgba(255,255,255,0.2); /* 枠を確認しやすく */
         }
 
         /* 1枚の時の設定 */
         .single-image-mode .flash-img-item {
-            height: 45vh; /* 1枚なら大きく表示 */
+            height: 50vh; /* V1.26は45vh */
         }
 
-        /* 横向き：Bluefyは上下にバーが残りやすいため厳しめに制限 */
+        /* 横向き：Bluefy対策をしつつ限界まで拡大 */
         @media screen and (orientation: landscape) {
             #flash-overlay { flex-direction: row; padding: 5px; justify-content: center; align-items: center;}
-            #flash-text { font-size: 20vh; margin-right: 20px; max-width: 30%; }
+            #flash-text { font-size: 22vh; margin-right: 20px; width: 25%; /* テキスト幅を25%に縮小（V1.26は30%） */ }
             #flash-img-container { 
-                width: 60%; 
+                width: 70%; /* 画像エリアを7割に拡大（V1.26は60%） */
                 grid-template-columns: 1fr 1fr;
                 height: auto;
             }
             .flash-img-item { 
-                height: 38vh; /* 横画面2段時：3.8割×2で収める */
+                height: 40vh; /* 横画面2段時：4割×2で収める（V1.26は38vh） */
             }
             .single-image-mode .flash-img-item {
-                height: 75vh; /* 横1枚時：7.5割に制限（下が切れるのを防止） */
+                height: 82vh; /* 横1枚時：8.2割に拡大（V1.26は75vh） */
             }
             #app-container { flex-direction: row; }
             .btn-container { width: 35%; }
@@ -108,7 +107,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.26</div>
+            <div id="app-title">はよ選果 V1.27</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -127,6 +126,26 @@
                 <button id="modeDirect" class="mode-btn">直パック詰め</button>
             </div>
             <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 30px; font-size: 12px;">🛠 設定・共有</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b>マスタ設定・データ共有</b>
+            <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
+        </div>
+        <div id="config-list" style="margin-top:10px;"></div>
+        <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
+        <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
+        <div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-top:20px; text-align:center;">
+            <div style="display:flex; gap:10px;">
+                <button onclick="startHost()" style="flex:1; padding:12px; background:#6f42c1; color:white; border:none; border-radius:8px; font-weight:bold;">📡 送信</button>
+                <button onclick="startScan()" style="flex:1; padding:12px; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold;">📷 受信</button>
+            </div>
+            <div id="qrcode" style="display:flex; justify-content:center; margin:10px 0;"></div>
+            <p id="share-status" style="font-size:12px; color:#666;"></p>
+            <video id="video" playsinline style="width:100%; max-width:300px; border-radius:10px; display:none; margin:10px auto;"></video>
+            <canvas id="qr-canvas" style="display:none;"></canvas>
         </div>
     </div>
 
@@ -257,7 +276,7 @@
         }
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
         function startHost() { document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中..."; if(peer) peer.destroy(); peer = new Peer(); peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; }); peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); }); }
-        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, cvs.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
+        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, canvas.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
         function connectToHost(id) { const p = new Peer(); p.on('open', () => { const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); }); }); }
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
