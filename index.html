@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.39</title>
+    <title>イチゴ選別システム V1.40</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -23,16 +23,14 @@
             position: fixed; 
             top: 0; left: 0; 
             width: 100vw; height: 100vh; 
-            display: none; 
             z-index: 500; 
-            /* 縦画面：上下に分割する「2つのセル」 */
-            display: none; /* JSでflexに切り替え */
+            display: none; 
             flex-direction: column;
         }
         
         /* セル1：文字用 */
         #flash-text-cell {
-            flex: 1; /* 縦画面では上部 */
+            flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -41,22 +39,22 @@
 
         /* セル2：画像用 */
         #flash-img-cell {
-            flex: 3; /* 縦画面では下部を大きく(75%) */
+            flex: 3;
             display: flex;
             justify-content: center;
             align-items: center;
             width: 100%;
             overflow: hidden;
+            position: relative;
         }
 
         #flash-text { 
-            font-size: 12vh; /* 縦での文字サイズ */
+            font-size: 12vh;
             font-weight: bold; color: #fff; 
             -webkit-text-stroke: 1.5px #000; 
             margin: 0;
         }
         
-        /* 画像コンテナ（セルの中で最大化） */
         #flash-img-container { 
             width: 100%; height: 100%;
             display: flex;
@@ -70,6 +68,7 @@
             max-height: 98%;
             object-fit: contain; 
             border-radius: 10px;
+            display: block;
         }
 
         /* 縦画面・1枚時の特例：角を丸くしない（大きく見せるため） */
@@ -77,38 +76,49 @@
             width: 100%; height: 100%;
             max-width: 100%; max-height: 100%;
             border-radius: 0;
+            position: static; /* 以前の絶対配置を解除 */
+            transform: none;
         }
 
-        /* --- 横向き（Landscape）：左右に分割する「2つのセル」 --- */
+        /* --- 横向き（Landscape）：左右に分割 --- */
         @media screen and (orientation: landscape) {
             #flash-overlay { 
-                flex-direction: row; /* 左右並び */
+                flex-direction: row; 
             }
             
             #flash-text-cell {
                 flex: 1; /* 左側50% */
-                height: 100%;
+                height: 100vh;
             }
             
             #flash-img-cell {
                 flex: 1; /* 右側50% */
-                height: 100%;
+                height: 100vh;
+                display: flex !important;
+                justify-content: center !important; /* 水平中央 */
+                align-items: center !important;    /* 垂直中央 */
             }
 
             #flash-text { 
-                font-size: 25vh; /* 横画面では文字を大きく */
+                font-size: 25vh;
             }
 
+            /* 横画面1枚：右セルの中心にピタッと止める */
             .single-image-mode .flash-img-item {
-                max-width: 95%; /* 横画面の右セル内では少し余白 */
-                max-height: 92%;
+                width: auto !important;
+                height: auto !important;
+                max-width: 95% !important; /* セル幅の95%まで */
+                max-height: 92% !important; /* セル高さの92%まで */
                 border-radius: 10px;
+                position: static !important; /* 右下に逃げないように固定解除 */
+                transform: none !important;
             }
 
             #app-container { flex-direction: row; }
             .btn-container { width: 35%; }
         }
 
+        /* UIパーツ */
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
@@ -122,7 +132,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.39</div>
+            <div id="app-title">はよ選果 V1.40</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -145,26 +155,6 @@
                 <button id="modeDirect" class="mode-btn">直パック詰め</button>
             </div>
             <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 30px; font-size: 12px;">🛠 設定・共有</button>
-        </div>
-    </div>
-
-    <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <b>マスタ設定・データ共有</b>
-            <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
-        </div>
-        <div id="config-list" style="margin-top:10px;"></div>
-        <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
-        <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
-        <div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-top:20px; text-align:center;">
-            <div style="display:flex; gap:10px;">
-                <button onclick="startHost()" style="flex:1; padding:12px; background:#6f42c1; color:white; border:none; border-radius:8px; font-weight:bold;">📡 送信</button>
-                <button onclick="startScan()" style="flex:1; padding:12px; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold;">📷 受信</button>
-            </div>
-            <div id="qrcode" style="display:flex; justify-content:center; margin:10px 0;"></div>
-            <p id="share-status" style="font-size:12px; color:#666;"></p>
-            <video id="video" playsinline style="width:100%; max-width:300px; border-radius:10px; display:none; margin:10px auto;"></video>
-            <canvas id="qr-canvas" style="display:none;"></canvas>
         </div>
     </div>
 
@@ -215,6 +205,7 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
+        // Bluetooth & Weight Logic (略さず保持)
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
@@ -289,11 +280,28 @@
             }; reader.readAsDataURL(file);
         }
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
-        function startHost() { document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中..."; if(peer) peer.destroy(); peer = new Peer(); peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; }); peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); }); }
-        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, canvas.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
-        function connectToHost(id) { const p = new Peer(); p.on('open', () => { const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); }); }); }
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
+
+    <div id="settings-modal" class="modal">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b>マスタ設定・データ共有</b>
+            <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
+        </div>
+        <div id="config-list" style="margin-top:10px;"></div>
+        <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
+        <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
+        <div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-top:20px; text-align:center;">
+            <div style="display:flex; gap:10px;">
+                <button onclick="startHost()" style="flex:1; padding:12px; background:#6f42c1; color:white; border:none; border-radius:8px; font-weight:bold;">📡 送信</button>
+                <button onclick="startScan()" style="flex:1; padding:12px; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold;">📷 受信</button>
+            </div>
+            <div id="qrcode" style="display:flex; justify-content:center; margin:10px 0;"></div>
+            <p id="share-status" style="font-size:12px; color:#666;"></p>
+            <video id="video" playsinline style="width:100%; max-width:300px; border-radius:10px; display:none; margin:10px auto;"></video>
+            <canvas id="qr-canvas" style="display:none;"></canvas>
+        </div>
+    </div>
 </body>
 </html>
