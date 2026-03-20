@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.47</title>
+    <title>イチゴ選別システム V1.48</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -53,20 +53,20 @@
         .mode-btn { flex: 1; height: 35px; border-radius: 8px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
         
-        /* 設定・共有UI（シンプル版） */
+        /* 設定・共有UI */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
         .share-card { background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 15px; margin-top: 20px; text-align: center; }
         #qrcode-area { margin: 10px auto; display: none; justify-content: center; flex-direction: column; align-items: center; gap: 5px; }
-        #qrcode-area p { font-size: 10px; color: #999; margin: 0; }
         #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border-radius: 10px; border: 3px solid #007bff; }
         .action-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold; margin: 5px 0; color: white; }
+        #peer-status-text { font-size: 10px; color: #dc3545; margin-bottom: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.47</div>
+            <div id="app-title">はよ選果 V1.48</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -155,10 +155,20 @@
         }
         document.getElementById('tareBtn').onclick = () => { stableWeight = currentWeight; document.getElementById('diff-display').innerText = "リセット"; if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
 
-        /* --- 設定共有（シンプル版）ロジック --- */
+        /* --- 共有ロジック強化版 --- */
         function initPeer() {
+            if (peer) peer.destroy();
+            const statusLabel = document.getElementById('peer-status-text');
+            if(statusLabel) statusLabel.innerText = "通信準備中...";
+
             peer = new Peer();
-            peer.on('open', (id) => { myPeerId = id; });
+            peer.on('open', (id) => { 
+                myPeerId = id; 
+                if(statusLabel) {
+                    statusLabel.innerText = "● 接続完了 (送信・受信OK)";
+                    statusLabel.style.color = "#28a745";
+                }
+            });
             peer.on('connection', (c) => {
                 c.on('data', (data) => {
                     if (confirm("設定データを受信しました。マスタを更新しますか？")) {
@@ -166,52 +176,67 @@
                     }
                 });
             });
+            peer.on('error', (err) => {
+                console.error(err);
+                myPeerId = null;
+                if(statusLabel) {
+                    statusLabel.innerText = "× 接続エラー。再試行中...";
+                    statusLabel.style.color = "#dc3545";
+                }
+                setTimeout(initPeer, 3000); // エラー時は3秒後に再試行
+            });
         }
 
-        // 自分のQRを作成
         function createMyQR() {
-            if(!myPeerId) return alert("通信準備中。数秒待ってから押し直してください。");
+            if(!myPeerId) {
+                alert("通信の準備がまだできていません。再接続を試みます。");
+                initPeer();
+                return;
+            }
             const qrDiv = document.getElementById('qrcode');
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, { text: myPeerId, width: 180, height: 180 });
             document.getElementById('qrcode-area').style.display = 'flex';
         }
 
-        // 相手のQRをスキャンして即送信
         async function startQRScan() {
-            const video = document.createElement("video");
-            const canvas = document.getElementById("v-canvas");
-            const ctx = canvas.getContext("2d");
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
-            canvas.style.display = "block"; scanning = true;
-            
-            const tick = () => {
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    canvas.height = video.videoHeight; canvas.width = video.videoWidth;
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-                    if (code) {
-                        stopScan(stream);
-                        sendSettingsTo(code.data);
-                        return;
+            try {
+                const video = document.createElement("video");
+                const canvas = document.getElementById("v-canvas");
+                const ctx = canvas.getContext("2d");
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
+                canvas.style.display = "block"; scanning = true;
+                
+                const tick = () => {
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        canvas.height = video.videoHeight; canvas.width = video.videoWidth;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+                        if (code) {
+                            stopScan(stream);
+                            sendSettingsTo(code.data);
+                            return;
+                        }
                     }
-                }
-                if (scanning) requestAnimationFrame(tick);
-            };
-            requestAnimationFrame(tick);
+                    if (scanning) requestAnimationFrame(tick);
+                };
+                requestAnimationFrame(tick);
+            } catch (err) { alert("カメラの起動に失敗しました: " + err); }
         }
         function stopScan(s) { scanning = false; s.getTracks().forEach(t => t.stop()); document.getElementById("v-canvas").style.display = "none"; }
         
         function sendSettingsTo(targetId) {
+            if (!peer || peer.destroyed) { alert("通信が切断されています。再読み込みしてください。"); return; }
             const c = peer.connect(targetId);
             c.on('open', () => {
                 c.send(currentRanges);
                 alert("送信に成功しました！");
             });
+            c.on('error', (err) => { alert("送信に失敗しました。相手がQR画面を開いているか確認してください。"); });
         }
 
-        /* リスト表示など */
+        /* 設定リスト */
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
@@ -252,19 +277,20 @@
         <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
 
         <div class="share-card">
-            <h3 style="font-size:15px; margin:0 0 15px 0; color:#333;">📡 設定データを送る・受け取る</h3>
+            <h3 style="font-size:15px; margin:0 0 5px 0; color:#333;">📡 設定データを送る・受け取る</h3>
+            <div id="peer-status-text">通信準備中...</div>
             
             <button class="action-btn" style="background:#dc3545;" onclick="createMyQR()">1. 自分のQRコードを表示</button>
             <div id="qrcode-area">
                 <div id="qrcode"></div>
-                <p>※相手にこのQRを読み取ってもらってください</p>
+                <p style="font-size:10px; color:#999; margin:0;">※相手にこのQRを読み取ってもらってください</p>
             </div>
 
             <div style="margin:15px 0; border-top:1px solid #dee2e6;"></div>
 
             <button class="action-btn" style="background:#007bff;" onclick="startQRScan()">2. 相手のQRを読み取る</button>
             <canvas id="v-canvas"></canvas>
-            <p style="font-size:11px; color:#666; margin-top:5px;">※読み取りに成功すると自動で設定が送信されます</p>
+            <p style="font-size:11px; color:#666; margin-top:5px;">※読み取ると自動で設定が送信されます</p>
         </div>
     </div>
 </body>
