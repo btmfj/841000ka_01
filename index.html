@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.71</title>
+    <title>イチゴ選別システム V1.71c</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -41,7 +41,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.71</div>
+            <div id="app-title">はよ選果 V1.71c</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -83,28 +83,33 @@
         }
         window.onload = loadSettings;
 
-        /* --- GAS同期システム：送信 --- */
-        async function syncToGas() {
+        /* --- GAS同期システム：送信 (安定化版) --- */
+        function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "高画質データを送信中..."; qrDiv.innerHTML = '';
-
-            try {
-                // 画像リサイズを行わず、そのままのデータで送信
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(currentRanges)
-                });
-                const result = await response.json();
-                
-                if (result.id) {
-                    new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
-                    msg.style.color = "#22c55e";
-                    msg.innerText = "✅ 同期QRを発行しました！子機でスキャン";
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", GAS_URL, true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    loader.style.display = 'none';
+                    if (xhr.status === 200 || xhr.status === 0) { // status 0 はリダイレクト成功時
+                        try {
+                            const result = JSON.parse(xhr.responseText);
+                            if (result.id) {
+                                new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
+                                msg.style.color = "#22c55e";
+                                msg.innerText = "✅ 同期QRを発行しました！";
+                            }
+                        } catch(e) { 
+                            msg.innerText = "❌ 応答エラー：GASのデプロイをやり直してください";
+                        }
+                    } else {
+                        msg.innerText = "❌ 送信失敗：Googleのブロックが発生しました";
+                    }
                 }
-            } catch (e) {
-                msg.style.color = "#ef4444";
-                msg.innerText = "❌ 失敗：電波状況を確認してください";
-            } finally { loader.style.display = 'none'; }
+            };
+            xhr.send(JSON.stringify(currentRanges));
         }
 
         /* --- GAS同期システム：受信 --- */
@@ -124,13 +129,14 @@
                         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
                         if (code) { 
                             stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none";
-                            // IDを元にGASからデータを取得
-                            const res = await fetch(`${GAS_URL}?id=${code.data}`);
-                            const data = await res.json();
-                            if (data && confirm("高画質設定を同期（上書き）しますか？")) {
-                                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-                                location.reload();
-                            }
+                            fetch(`${GAS_URL}?id=${code.data}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data && confirm("高画質設定を同期（上書き）しますか？")) {
+                                        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                                        location.reload();
+                                    }
+                                });
                             return; 
                         }
                     }
@@ -212,7 +218,6 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
-                    // 保存時はある程度の解像度(350px)を維持。送信時はこれをそのまま送る
                     const sc = Math.min(350 / img.width, 350 / img.height);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
