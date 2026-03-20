@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.24</title>
+    <title>イチゴ選別システム V1.25</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        /* Bluefy対策：vhを過信せず、%とflexで制御 */
+        /* 全体レイアウト */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
-        
         #app-container { 
             height: 100%; 
             display: flex; 
@@ -24,11 +23,11 @@
         #weight-section { text-align: center; margin: 0; padding: 0; flex-shrink: 0; }
         #app-title { font-size: 14px; font-weight: bold; color: #d63031; margin: 0; }
         #status { color: #555; font-size: 10px; margin: 0; }
-        #weight { font-size: 8vh; font-weight: bold; color: #00b300; line-height: 1; margin: 1px 0; }
+        #weight { font-size: 7vh; font-weight: bold; color: #00b300; line-height: 1; margin: 1px 0; }
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* 判定オーバーレイ：ここをBluefy用に最適化 */
+        /* 判定オーバーレイ */
         #flash-overlay { 
             position: fixed; 
             top: 0; left: 0; 
@@ -36,62 +35,67 @@
             display: none; 
             flex-direction: column; 
             align-items: center; 
-            justify-content: flex-start; /* 上詰めにして下スペースを確保 */
             z-index: 500; 
             padding: 5px; 
             box-sizing: border-box; 
+            justify-content: flex-start; /* 上詰め */
         }
         
         #flash-text { 
-            font-size: 10vh; font-weight: bold; line-height: 1; color: #fff; 
+            font-size: 9vh; /* Bluefy用に少し抑える */
+            font-weight: bold; line-height: 1; color: #fff; 
             -webkit-text-stroke: 1.5px #000; 
             margin: 5px 0; 
             flex-shrink: 0; 
             text-align: center; 
         }
         
-        /* 画像コンテナ：縦画面で絶対に「切れない」設定 */
+        /* --- V1.25 画像の被り対策 --- */
         #flash-img-container { 
             display: grid; 
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
+            grid-template-rows: 1fr 1fr; /* 4枚時に高さを半分ずつに強制固定（被り防止） */
             gap: 4px; 
             width: 95%; 
-            flex: 1; 
-            min-height: 0; 
-            max-height: 45%; /* 画面の45%以内に強制的に押し込める */
-            margin-bottom: 20px; /* 下端のツールバー対策で少し余裕を持たせる */
+            flex: 1; /* 残りのスペースをすべて使う */
+            min-height: 0; /* 縮小を許可 */
+            max-height: 50%; /* 縦画面で高さを5割に制限（切れる防止） */
+            margin-bottom: 20px; /* 下端ツールバー対策 */
+            overflow: hidden;
         }
 
         .flash-img-item { 
             width: 100%; 
             height: 100%; 
-            object-fit: contain; 
+            max-width: 100%; 
+            max-height: 100%; /* 枠（セル）を絶対に越えない */
+            object-fit: contain; /* 比率を保って枠に収める */
             border-radius: 5px; 
             display: block;
-            min-height: 0;
         }
 
+        /* 1枚の時の特別設定（継承） */
         .single-image-mode #flash-img-container {
             display: flex;
-            max-height: 60%; 
+            max-height: 65%; 
         }
 
-        /* 横向き：Bluefyは横向き時にバーが消えないことがあるため、高さを80%に抑える */
+        /* 横向き（継承） */
         @media screen and (orientation: landscape) {
             #flash-overlay { flex-direction: row; padding: 5px; justify-content: space-around; align-items: center;}
             #flash-text { font-size: 22vh; margin: 0 10px 0 0; max-width: 30%; }
             #flash-img-container { 
-                height: 80% !important; 
-                max-height: 80% !important; 
+                height: 85% !important; 
+                max-height: 85% !important; 
                 width: 65%; 
                 margin-bottom: 0;
             }
-            .single-image-mode #flash-img-container { height: 85% !important; }
+            .single-image-mode #flash-img-container { height: 90% !important; }
             #app-container { flex-direction: row; }
             .btn-container { width: 35%; }
         }
 
+        /* 以下、ボタン・設定画面（維持） */
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; cursor: pointer; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
@@ -105,7 +109,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.24</div>
+            <div id="app-title">はよ選果 V1.25</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -128,7 +132,7 @@
     </div>
 
     <script>
-        // JSロジックはV1.23を継承（省略なしで全て保持）
+        // JSロジック（そのまま維持）
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -183,6 +187,7 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
+        // Bluetooth/重量処理
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
@@ -255,7 +260,7 @@
         }
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
         function startHost() { document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中..."; if(peer) peer.destroy(); peer = new Peer(); peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; }); peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); }); }
-        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, cvs.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
+        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, canvas.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
         function connectToHost(id) { const p = new Peer(); p.on('open', () => { const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); }); }); }
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
