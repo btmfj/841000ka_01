@@ -3,81 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.08</title>
+    <title>イチゴ選別システム V1.09</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        html, body { 
-            height: 100%; margin: 0; padding: 0; overflow: hidden; 
-            background-color: #ffe4e1; font-family: sans-serif; 
-        }
-        
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; }
-        #app-title { font-size: 22px; font-weight: bold; color: #d63031; margin-bottom: 5px; }
-        #status { color: #555; font-size: 12px; }
-        #weight { font-size: 60px; font-weight: bold; color: #00b300; line-height: 1; margin: 5px 0; }
+        #app-title { font-size: 20px; font-weight: bold; color: #d63031; margin-bottom: 2px; }
+        #status { color: #555; font-size: 11px; }
+        #weight { font-size: 55px; font-weight: bold; color: #00b300; line-height: 1; margin: 2px 0; }
         #weight span { font-size: 18px; color: #000; }
-        #diff-display { font-size: 24px; color: #ff4757; height: 30px; font-weight: bold; }
+        #diff-display { font-size: 22px; color: #ff4757; height: 28px; font-weight: bold; }
         
-        /* --- V1.08 モヤ除去 & レイアウト修正 --- */
+        /* --- V1.09 フラッシュレイアウト修正 --- */
         #flash-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             display: none; flex-direction: column; align-items: center; justify-content: flex-start; 
-            z-index: 300; padding: 10px; box-sizing: border-box;
-            text-shadow: none !important; /* 全体的な影（モヤの正体）を強制削除 */
+            z-index: 500; padding: 10px; box-sizing: border-box;
         }
         
         #flash-text { 
-            font-size: 90px; font-weight: bold; line-height: 1.1; 
-            color: #fff; 
-            /* 文字の縁取りを影ではなく「線」で表現してクッキリさせる */
-            -webkit-text-stroke: 2px #333;
+            font-size: 75px; font-weight: bold; line-height: 1.1; 
+            color: #fff; -webkit-text-stroke: 2px #000;
             margin-bottom: 5px; flex-shrink: 0;
-            z-index: 310;
         }
         
+        /* コンテナの高さを画面の残りに合わせる */
         #flash-img-container { 
             display: grid; width: 100%; flex-grow: 1; 
-            gap: 12px; /* 画像同士の隙間を広げて重なりを防止 */
-            justify-content: center; align-items: center;
-            overflow: hidden;
-            padding-bottom: 10px;
+            gap: 10px; justify-content: center; align-items: center;
+            overflow: hidden; padding: 5px; box-sizing: border-box;
         }
         
+        /* 画像自体の制御を強化 */
         .flash-img-item { 
             width: 100%; height: 100%; 
+            max-width: 100%; max-height: 100%; /* 親の枠を絶対超えない */
             object-fit: contain; 
-            border-radius: 12px;
-            /* 画像自体の影も「モヤ」に見えるため最小限にする */
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            background: #fff; /* 背景を白にして透けを防止 */
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            background: transparent; /* 背景色による被りを防止 */
         }
+
+        /* 縦画面時の3枚・4枚用高さ制限 */
+        .grid-3-4 { grid-template-rows: 1fr 1fr !important; }
 
         @media screen and (orientation: landscape) {
             #flash-overlay { flex-direction: row; }
-            #flash-text { font-size: 110px; margin-right: 20px; margin-bottom: 0; }
-            #flash-img-container { height: 95%; }
+            #flash-text { font-size: 90px; margin-right: 15px; }
+            #flash-img-container { height: 90%; }
         }
 
-        .btn-container { width: 100%; max-width: 360px; margin-top: auto; padding-bottom: 10px; }
-        .my-button { width: 100%; height: 55px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 4px 0; }
+        /* UIパーツ */
+        .btn-container { width: 100%; max-width: 360px; margin-top: auto; padding-bottom: 5px; }
+        .my-button { width: 100%; height: 50px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 3px 0; }
         #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
         #tareBtn { background-color: #ff8c00; box-shadow: 0 4px #d97700; }
-        .mode-container { display: flex; gap: 8px; margin: 5px 0; }
-        .mode-btn { flex: 1; height: 40px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
+        .mode-container { display: flex; gap: 8px; margin: 3px 0; }
+        .mode-btn { flex: 1; height: 38px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
-        #settingsBtn { background: #6c757d; height: 40px; font-size: 14px; }
+        #settingsBtn { background: #6c757d; height: 35px; font-size: 13px; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 400; overflow-y: auto; padding: 15px; box-sizing: border-box; }
-        .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-        .config-img-pre { width: 45px; height: 45px; object-fit: cover; border-radius: 4px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 15px; box-sizing: border-box; }
+        .config-row { border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; border-radius: 8px; }
+        .config-img-pre { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <video id="wake-lock-video" playsinline loop muted style="display:none;"></video>
-        <div id="app-title">はよ選果 V1.08</div>
+        <div id="app-title">はよ選果 V1.09</div>
         <div id="status">Bluetooth未接続</div>
         <div id="weight">0.0<span>g</span></div>
         <div id="diff-display">--.- g 減</div>
@@ -100,25 +96,25 @@
 
     <div id="settings-modal" class="modal">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <b style="font-size:20px;">マスタ設定</b>
+            <b style="font-size:18px;">マスタ設定</b>
             <button onclick="closeSettings()" style="font-size:20px; border:none; background:none;">✕</button>
         </div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="addRangeRow()" style="width:100%; padding:10px; margin-top:10px;">＋ 判定範囲を追加</button>
-        <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
-            <button class="my-button" style="background:#28a745;" onclick="saveSettings()">✅ スマホに保存</button>
-            <div style="display:flex; gap:10px;">
+        <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px;">
+            <button class="my-button" style="background:#28a745;" onclick="saveSettings()">✅ 保存</button>
+            <div style="display:flex; gap:8px;">
                 <button onclick="startHost()" style="flex:1; padding:10px; background:#6f42c1; color:white; border-radius:8px;">📡 送信</button>
                 <button onclick="startScan()" style="flex:1; padding:10px; background:#007bff; color:white; border-radius:8px;">📷 受信</button>
             </div>
         </div>
-        <div id="qr-display-area" style="display:none; text-align:center; margin-top:15px; border:2px dashed #6f42c1; padding:10px;">
+        <div id="qr-display-area" style="display:none; text-align:center; margin-top:10px; border:2px dashed #6f42c1; padding:10px;">
             <div id="sync-msg">生成中...</div>
-            <div id="qrcode" style="display:inline-block; margin:10px;"></div>
+            <div id="qrcode" style="display:inline-block; margin:5px;"></div>
             <button onclick="stopPeer()">中止</button>
         </div>
-        <div id="scanner-container" style="display:none; text-align:center; margin-top:15px;">
-            <video id="scanner-video" style="width:100%; max-width:300px; border:2px solid #d63031;" playsinline></video>
+        <div id="scanner-container" style="display:none; text-align:center; margin-top:10px;">
+            <video id="scanner-video" style="width:100%; max-width:280px; border:2px solid #d63031;" playsinline></video>
             <canvas id="scanner-canvas" style="display:none;"></canvas>
             <button onclick="stopScan()">中止</button>
         </div>
@@ -186,6 +182,7 @@
             }
         }
 
+        // --- V1.09 表示修正 (重なりとはみ出し防止) ---
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fText = document.getElementById('flash-text');
@@ -194,12 +191,14 @@
             fText.innerText = text;
             overlay.style.backgroundColor = color;
             imgContainer.innerHTML = '';
+            imgContainer.className = ''; // クラスリセット
             imgContainer.style.display = 'none';
 
             if (currentMode === "direct" && imgArray.length > 0) {
                 const count = Math.min(imgArray.length, 4);
                 imgContainer.style.display = 'grid';
                 
+                // グリッド定義の厳密化
                 if (count === 1) { 
                     imgContainer.style.gridTemplateColumns = "1fr"; 
                     imgContainer.style.gridTemplateRows = "1fr";
@@ -207,15 +206,19 @@
                     imgContainer.style.gridTemplateColumns = "1fr 1fr"; 
                     imgContainer.style.gridTemplateRows = "1fr";
                 } else {
+                    // 3枚 or 4枚の時は 2列x2行 に固定
+                    imgContainer.className = 'grid-3-4';
                     imgContainer.style.gridTemplateColumns = "1fr 1fr";
-                    imgContainer.style.gridTemplateRows = "1fr 1fr";
                 }
 
                 imgArray.slice(0, 4).forEach((src, i) => {
                     const img = document.createElement('img');
                     img.src = src;
                     img.className = 'flash-img-item';
-                    if (count === 3 && i === 0) img.style.gridColumn = "1 / span 2";
+                    
+                    if (count === 3 && i === 0) {
+                        img.style.gridColumn = "1 / span 2"; // 3枚時の1枚目を上段ワイドに
+                    }
                     imgContainer.appendChild(img);
                 });
             }
@@ -227,7 +230,7 @@
 
         document.getElementById('tareBtn').onclick = () => {
             stableWeight = currentWeight;
-            document.getElementById('diff-display').innerText = "基準リセット";
+            document.getElementById('diff-display').innerText = "リセット";
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
 
@@ -286,7 +289,7 @@
             reader.readAsDataURL(file);
         }
 
-        function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
+        function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("完了"); }
 
         function startHost() {
             stopPeer(); document.getElementById('qr-display-area').style.display='block';
@@ -300,7 +303,7 @@
                     conn.on('data', (d) => {
                         if(d === "READY") {
                             conn.send({ type:"CONFIG", payload: JSON.stringify(currentRanges) });
-                            setTimeout(()=>alert("送信成功"), 500);
+                            setTimeout(()=>alert("送信完了"), 500);
                         }
                     });
                 });
