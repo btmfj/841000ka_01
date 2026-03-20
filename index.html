@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.13</title>
+    <title>イチゴ選別システム V1.13.1</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -26,40 +26,51 @@
         #weight span { font-size: 3vh; color: #000; }
         #diff-display { font-size: 4vh; color: #ff4757; height: 5vh; font-weight: bold; }
         
-        /* フラッシュオーバーレイ：横画面時に画像がはみ出さないよう修正 */
+        /* フラッシュオーバーレイ：中央配置 */
         #flash-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             display: none; flex-direction: column; align-items: center; justify-content: center; 
-            z-index: 500; padding: 20px; box-sizing: border-box;
+            z-index: 500; padding: 10px; box-sizing: border-box;
         }
         
         #flash-text { 
             font-size: 15vh; font-weight: bold; line-height: 1.1; 
             color: #fff; -webkit-text-stroke: 2px #000;
-            margin-bottom: 10px; flex-shrink: 0;
+            margin-bottom: 5px; flex-shrink: 0;
             text-align: center;
         }
         
         #flash-img-container { 
-            display: grid; width: 100%; height: 100%; 
-            max-height: 70vh; /* テキスト以外の領域に収める */
+            display: grid; width: 100%; height: auto; 
             gap: 10px; justify-content: center; align-items: center;
             overflow: hidden; 
         }
         
         .flash-img-item { 
             width: 100%; height: 100%; 
-            object-fit: contain; 
+            object-fit: contain; /* アスペクト比を維持しつつ最大化 */
             border-radius: 10px;
             box-shadow: none; 
         }
 
-        /* 横画面・PCブラウザ用のスタイル */
+        /* --- V1.13.1 横画面・PCブラウザ用のスタイル修正 --- */
         @media screen and (orientation: landscape) {
-            #flash-overlay { flex-direction: row; justify-content: space-around; }
-            #flash-text { font-size: 25vh; margin: 0 20px 0 0; }
-            #flash-img-container { height: 90vh; max-height: 90vh; width: 60%; }
+            #flash-overlay { 
+                flex-direction: row; /* 横並び */
+                justify-content: space-around; 
+                padding: 5vh; /* 上下に余白を持たせる */
+            }
+            #flash-text { 
+                font-size: 20vh; /* テキストサイズを少し抑える */
+                margin: 0 20px 0 0; 
+            }
+            #flash-img-container { 
+                width: 50%; /* 画像エリアを少し狭く */
+                height: 80vh; /* 高さを画面の80%に制限 */
+                max-height: 80vh; 
+            }
             
+            /* メイン画面の横レイアウト */
             #app-container { flex-direction: row; flex-wrap: wrap; justify-content: center; align-content: center; gap: 20px; }
             .btn-container { width: 45%; max-width: 500px; margin: 0; }
             #weight-section { width: 45%; text-align: center; }
@@ -83,7 +94,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.13</div>
+            <div id="app-title">はよ選果 V1.13.1</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -144,7 +155,7 @@
         }
         window.onload = loadSettings;
 
-        /* --- V1.13 最適化表示ロジック --- */
+        /* --- V1.13.1 表示ロジック（そのまま維持） --- */
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fText = document.getElementById('flash-text');
@@ -202,7 +213,7 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1500 : 4000);
         }
 
-        // Bluetooth / 重量処理
+        // Bluetooth / 重量処理（変更なし）
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
 
@@ -251,7 +262,7 @@
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
 
-        // 設定画面系
+        // 設定画面系（変更なし）
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
         document.getElementById('settingsBtn').onclick = openSettings;
