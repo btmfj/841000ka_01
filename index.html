@@ -3,99 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.20</title>
+    <title>イチゴ選別システム V1.21</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
+        /* 全体の余白を全削除 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; }
-        #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         
-        #weight-section { text-align: center; }
-        #app-title { font-size: 18px; font-weight: bold; color: #d63031; }
-        #status { color: #555; font-size: 11px; }
-        #weight { font-size: 8vh; font-weight: bold; color: #00b300; line-height: 1; }
+        #app-container { 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 5px; /* 必要最小限の余白 */
+            box-sizing: border-box; 
+            width: 100%; 
+        }
+        
+        /* メイン画面の余白を詰める */
+        #weight-section { text-align: center; margin: 0; padding: 0; }
+        #app-title { font-size: 16px; font-weight: bold; color: #d63031; margin: 0; }
+        #status { color: #555; font-size: 10px; margin: 0; }
+        #weight { font-size: 8vh; font-weight: bold; color: #00b300; line-height: 1; margin: 2px 0; }
         #weight span { font-size: 3vh; color: #000; }
-        #diff-display { font-size: 4vh; color: #ff4757; height: 5vh; font-weight: bold; }
+        #diff-display { font-size: 3vh; color: #ff4757; height: 4vh; font-weight: bold; margin: 0; }
         
-        /* フラッシュオーバーレイ */
+        /* --- フラッシュオーバーレイ（判定表示） --- */
         #flash-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: none; flex-direction: column; align-items: center; justify-content: center; 
-            z-index: 500; padding: 10px; box-sizing: border-box; 
+            z-index: 500; padding: 5px; box-sizing: border-box; 
         }
         
         #flash-text { 
             font-size: 12vh; font-weight: bold; line-height: 1; color: #fff; 
-            -webkit-text-stroke: 2px #000; margin: 10px; flex-shrink: 0; text-align: center; 
+            -webkit-text-stroke: 1.5px #000; 
+            margin: 0 0 5px 0; /* 下方向のみ最小限の余白 */
+            flex-shrink: 0; text-align: center; 
         }
         
-        /* 画像コンテナ：基本のグリッド */
+        /* 画像コンテナ：縦画面で「切れない」よう高さをさらに抑える(60vh) */
         #flash-img-container { 
             display: grid; 
             grid-template-columns: 1fr 1fr;
             grid-template-rows: 1fr 1fr;
             width: 100%; 
-            height: 70vh; 
-            gap: 10px; 
+            height: auto;
+            max-height: 60vh; /* テキストとのバランスを考慮し60%に制限 */
+            gap: 5px; 
+            justify-content: center; 
+            align-items: center;
             overflow: hidden;
+            margin: 0; padding: 0; /* コンテナ自体の余白を全削除 */
         }
 
         .flash-img-item { 
             width: 100%; 
             height: 100%; 
-            object-fit: contain; /* 比率を保って枠に収める */
-            border-radius: 8px; 
+            max-height: 100%; /* 親グリッドセルを突き破らない */
+            object-fit: contain; /* アスペクト比を維持しつつ枠に収める */
+            border-radius: 5px; 
             display: block;
         }
 
-        /* 1枚の時の特別設定 */
+        /* 1枚の時のスタイル（前回同様） */
         .single-image-mode #flash-img-container {
             display: flex;
-            grid-template-columns: none;
-            grid-template-rows: none;
-            height: 80vh;
+            height: auto;
+            max-height: 70vh; /* 1枚ならもう少し大きく */
         }
 
-        /* --- 横向きスマホ表示の決定版修正 --- */
+        /* --- 横向きスマホ表示の最適化（隙間詰めとはみ出し防止） --- */
         @media screen and (orientation: landscape) {
             #flash-overlay { 
-                flex-direction: row; 
+                flex-direction: row; /* 横並び */
                 padding: 10px; 
-                justify-content: space-around;
+                justify-content: space-between;
+                align-items: center;
             }
             #flash-text { 
-                font-size: 28vh; 
+                font-size: 25vh; /* テキストサイズをわずかに調整 */
                 margin: 0; 
-                width: 30%; 
+                width: 30%; /* テキスト幅を3割に固定し画像を圧迫しない */
                 flex-shrink: 0; 
             }
             
             #flash-img-container { 
-                width: 65%; /* テキストの横30%+余白を引いた残り */
-                height: 95vh; 
-                max-height: 95vh;
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: 48% 48%; /* 上下2段を高さ半分ずつに制限 */
-                gap: 2%;
+                width: 65%; /* 残りのスペースを画像に */
+                height: 85vh; /* 画面の高さの8.5割以内に収める（切れる防止） */
+                max-height: 85vh;
+                margin: 0;
             }
 
-            .single-image-mode #flash-img-container {
-                display: flex;
-                height: 95vh;
-                width: 65%;
-            }
+            .single-image-mode #flash-img-container { height: 90vh; }
             
             #app-container { flex-direction: row; justify-content: space-around; align-items: center; }
             .btn-container { width: 35%; margin: 0; }
         }
 
         /* 以下、ボタン・設定画面（維持） */
-        .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 5px; }
-        .my-button { width: 100%; height: 55px; font-size: 20px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 4px 0; cursor: pointer; }
+        .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 2px; }
+        .my-button { width: 100%; height: 50px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 3px 0; cursor: pointer; }
         #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
         #tareBtn { background-color: #ff8c00; box-shadow: 0 4px #d97700; }
-        .mode-btn { flex: 1; height: 40px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
+        .mode-btn { flex: 1; height: 38px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
@@ -104,7 +116,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.20</div>
+            <div id="app-title">はよ選果 V1.21</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -118,11 +130,11 @@
         <div class="btn-container">
             <button id="connectBtn" class="my-button">① 接続・開始</button>
             <button id="tareBtn" class="my-button">② 基準リセット</button>
-            <div style="display: flex; gap: 10px; margin: 4px 0;">
+            <div style="display: flex; gap: 8px; margin: 3px 0;">
                 <button id="modePre" class="mode-btn active">事前選果</button>
                 <button id="modeDirect" class="mode-btn">直パック詰め</button>
             </div>
-            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 40px; font-size: 15px;">🛠 設定・共有</button>
+            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 35px; font-size: 13px;">🛠 設定・共有</button>
         </div>
     </div>
 
@@ -147,6 +159,7 @@
     </div>
 
     <script>
+        // JSロジック（そのまま維持）
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -185,6 +198,9 @@
                     imgContainer.style.display = (count === 1) ? 'flex' : 'grid';
                     if (count === 1) {
                         overlay.classList.add('single-image-mode');
+                    } else {
+                        imgContainer.style.gridTemplateColumns = "1fr 1fr"; 
+                        imgContainer.style.gridTemplateRows = "1fr 1fr"; 
                     }
                     activeImages.forEach(src => {
                         const img = document.createElement('img');
@@ -198,7 +214,6 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // Bluetooth/重量処理
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
@@ -237,13 +252,7 @@
                 if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); }
             }
         }
-        document.getElementById('tareBtn').onclick = () => {
-            stableWeight = currentWeight;
-            document.getElementById('diff-display').innerText = "リセット";
-            if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
-        };
-
-        // 設定・共有
+        document.getElementById('tareBtn').onclick = () => { stableWeight = currentWeight; document.getElementById('diff-display').innerText = "リセット"; if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
         document.getElementById('settingsBtn').onclick = openSettings;
@@ -276,32 +285,9 @@
             }; reader.readAsDataURL(file);
         }
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
-        function startHost() {
-            document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中...";
-            if(peer) peer.destroy(); peer = new Peer();
-            peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; });
-            peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); });
-        }
-        async function startScan() {
-            const v = document.getElementById("video"); const s = document.getElementById('share-status');
-            v.style.display = "block"; s.innerText = "QRをかざしてください";
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            v.srcObject = stream; v.play();
-            const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d");
-            const timer = setInterval(() => {
-                if (v.readyState === v.HAVE_ENOUGH_DATA) {
-                    cvs.height = v.videoHeight; cvs.width = v.videoWidth;
-                    ctx.drawImage(v, 0, 0, cvs.width, cvs.height);
-                    const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, cvs.height);
-                    if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); }
-                }
-            }, 300);
-        }
-        function connectToHost(id) {
-            const p = new Peer(); p.on('open', () => {
-                const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); });
-            });
-        }
+        function startHost() { document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中..."; if(peer) peer.destroy(); peer = new Peer(); peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; }); peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); }); }
+        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, cvs.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
+        function connectToHost(id) { const p = new Peer(); p.on('open', () => { const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); }); }); }
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
