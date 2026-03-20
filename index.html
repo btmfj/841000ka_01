@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.09</title>
+    <title>イチゴ選別システム V1.10</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -16,7 +16,6 @@
         #weight span { font-size: 18px; color: #000; }
         #diff-display { font-size: 22px; color: #ff4757; height: 28px; font-weight: bold; }
         
-        /* --- V1.09 フラッシュレイアウト修正 --- */
         #flash-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             display: none; flex-direction: column; align-items: center; justify-content: flex-start; 
@@ -29,25 +28,27 @@
             margin-bottom: 5px; flex-shrink: 0;
         }
         
-        /* コンテナの高さを画面の残りに合わせる */
         #flash-img-container { 
             display: grid; width: 100%; flex-grow: 1; 
             gap: 10px; justify-content: center; align-items: center;
             overflow: hidden; padding: 5px; box-sizing: border-box;
         }
         
-        /* 画像自体の制御を強化 */
         .flash-img-item { 
             width: 100%; height: 100%; 
-            max-width: 100%; max-height: 100%; /* 親の枠を絶対超えない */
+            max-width: 100%; max-height: 100%;
             object-fit: contain; 
             border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            background: transparent; /* 背景色による被りを防止 */
+            /* 影を削除 */
+            box-shadow: none; 
+            background: transparent;
         }
 
-        /* 縦画面時の3枚・4枚用高さ制限 */
-        .grid-3-4 { grid-template-rows: 1fr 1fr !important; }
+        /* 縦画面時の3枚・4枚用レイアウトを2x2に固定 */
+        .grid-3-4 { 
+            grid-template-columns: 1fr 1fr !important;
+            grid-template-rows: 1fr 1fr !important; 
+        }
 
         @media screen and (orientation: landscape) {
             #flash-overlay { flex-direction: row; }
@@ -73,7 +74,7 @@
 <body>
     <div id="app-container">
         <video id="wake-lock-video" playsinline loop muted style="display:none;"></video>
-        <div id="app-title">はよ選果 V1.09</div>
+        <div id="app-title">はよ選果 V1.10</div>
         <div id="status">Bluetooth未接続</div>
         <div id="weight">0.0<span>g</span></div>
         <div id="diff-display">--.- g 減</div>
@@ -121,6 +122,7 @@
     </div>
 
     <script>
+        // JS部分はshowFlashのロジックのみ微調整
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -182,7 +184,7 @@
             }
         }
 
-        // --- V1.09 表示修正 (重なりとはみ出し防止) ---
+        /* --- V1.10 表示ロジック修正 --- */
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fText = document.getElementById('flash-text');
@@ -191,14 +193,13 @@
             fText.innerText = text;
             overlay.style.backgroundColor = color;
             imgContainer.innerHTML = '';
-            imgContainer.className = ''; // クラスリセット
+            imgContainer.className = ''; 
             imgContainer.style.display = 'none';
 
             if (currentMode === "direct" && imgArray.length > 0) {
                 const count = Math.min(imgArray.length, 4);
                 imgContainer.style.display = 'grid';
                 
-                // グリッド定義の厳密化
                 if (count === 1) { 
                     imgContainer.style.gridTemplateColumns = "1fr"; 
                     imgContainer.style.gridTemplateRows = "1fr";
@@ -206,19 +207,14 @@
                     imgContainer.style.gridTemplateColumns = "1fr 1fr"; 
                     imgContainer.style.gridTemplateRows = "1fr";
                 } else {
-                    // 3枚 or 4枚の時は 2列x2行 に固定
+                    // 3枚 or 4枚の時は 2x2 に統一（はみ出し防止）
                     imgContainer.className = 'grid-3-4';
-                    imgContainer.style.gridTemplateColumns = "1fr 1fr";
                 }
 
-                imgArray.slice(0, 4).forEach((src, i) => {
+                imgArray.slice(0, 4).forEach((src) => {
                     const img = document.createElement('img');
                     img.src = src;
                     img.className = 'flash-img-item';
-                    
-                    if (count === 3 && i === 0) {
-                        img.style.gridColumn = "1 / span 2"; // 3枚時の1枚目を上段ワイドに
-                    }
                     imgContainer.appendChild(img);
                 });
             }
@@ -228,16 +224,15 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1500 : 4000);
         }
 
+        // 以下、設定・通信系関数（変更なし）
         document.getElementById('tareBtn').onclick = () => {
             stableWeight = currentWeight;
             document.getElementById('diff-display').innerText = "リセット";
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
-
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; stopPeer(); stopScan(); }
         document.getElementById('settingsBtn').onclick = openSettings;
-
         function renderConfigList() {
             const area = document.getElementById('config-list');
             area.innerHTML = '';
@@ -250,7 +245,6 @@
                         <button onclick="currentRanges[${i}].images.splice(${j},1);renderConfigList()" style="position:absolute;top:0;right:0;background:red;color:white;border:none;border-radius:50%;width:15px;height:15px;font-size:10px;">×</button>
                     </div>
                 `).join('');
-
                 div.innerHTML = `
                     <div style="display:flex; gap:5px; align-items:center;">
                         <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:45px;">g〜
@@ -266,9 +260,7 @@
                 area.appendChild(div);
             });
         }
-
         function addRangeRow() { currentRanges.push({min:10, label:"新", audio:"SS", images:[]}); renderConfigList(); }
-        
         function addImg(e, i) {
             const file = e.target.files[0];
             if(!file) return;
@@ -288,9 +280,7 @@
             };
             reader.readAsDataURL(file);
         }
-
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("完了"); }
-
         function startHost() {
             stopPeer(); document.getElementById('qr-display-area').style.display='block';
             peer = new Peer();
@@ -310,7 +300,6 @@
             });
         }
         function stopPeer() { if(peer) peer.destroy(); document.getElementById('qr-display-area').style.display='none'; }
-        
         function startScan() {
             document.getElementById('scanner-container').style.display='block';
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(s => {
@@ -333,7 +322,6 @@
             });
         }
         function stopScan() { document.getElementById('scanner-container').style.display='none'; }
-
         function connectToPeer(id) {
             const p = new Peer();
             p.on('open', () => {
@@ -346,7 +334,6 @@
                 });
             });
         }
-
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
