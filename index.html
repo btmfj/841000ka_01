@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.18</title>
+    <title>イチゴ選別システム V1.19</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -18,57 +18,59 @@
         #weight span { font-size: 3vh; color: #000; }
         #diff-display { font-size: 4vh; color: #ff4757; height: 5vh; font-weight: bold; }
         
-        /* フラッシュオーバーレイ */
         #flash-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: none; flex-direction: column; align-items: center; justify-content: center; 
-            z-index: 500; padding: 0; box-sizing: border-box; 
+            z-index: 500; padding: 10px; box-sizing: border-box; 
         }
         
         #flash-text { 
-            font-size: 15vh; font-weight: bold; line-height: 1; color: #fff; 
+            font-size: 12vh; font-weight: bold; line-height: 1; color: #fff; 
             -webkit-text-stroke: 2px #000; margin: 10px; flex-shrink: 0; text-align: center; 
         }
         
-        /* 画像コンテナ：デフォルトは4枚用グリッド */
         #flash-img-container { 
-            display: grid; width: 100%; height: 100%; 
-            gap: 10px; justify-content: center; align-items: center;
-            flex: 1; overflow: hidden;
+            display: grid; 
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr; /* 4枚時に高さを半分ずつに固定 */
+            width: 100%; 
+            height: 70vh; /* 縦画面時のデフォルト */
+            gap: 8px; 
+            justify-content: center; 
+            align-items: center;
+            overflow: hidden;
         }
 
-        /* 画像自体の設定 */
         .flash-img-item { 
-            width: 100%; height: 100%; 
+            width: 100%; 
+            height: 100%; 
             object-fit: contain; 
             border-radius: 5px; 
-            display: block;
         }
 
-        /* --- 1枚の時の特別スタイル（ここが重要） --- */
+        /* 1枚の時のスタイル（前回同様） */
         .single-image-mode #flash-img-container {
-            display: flex; /* グリッドを解除 */
-            width: 100%;
-            height: 100%;
-            padding: 5px;
-            box-sizing: border-box;
-        }
-        .single-image-mode .flash-img-item {
-            width: 100%;
-            height: 100%;
-            max-width: none;
-            max-height: none;
+            display: flex;
+            height: 80vh;
         }
 
+        /* --- 横向きスマホの4枚表示対策 --- */
         @media screen and (orientation: landscape) {
-            #flash-overlay { flex-direction: row; padding: 10px; }
-            #flash-text { font-size: 30vh; margin-right: 20px; min-width: 30%; }
+            #flash-overlay { flex-direction: row; padding: 5px 20px; }
+            #flash-text { font-size: 25vh; margin: 0 20px 0 0; min-width: 25%; }
             
+            #flash-img-container { 
+                flex: 1;
+                height: 90vh; /* 画面の高さの9割以内に収める */
+                max-height: 90vh;
+            }
+
+            .single-image-mode #flash-img-container { height: 95vh; }
+
             #app-container { flex-direction: row; justify-content: space-around; align-items: center; }
-            .btn-container { width: 40%; margin: 0; }
+            .btn-container { width: 35%; margin: 0; }
         }
 
-        /* ボタン等 */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 5px; }
         .my-button { width: 100%; height: 55px; font-size: 20px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 4px 0; cursor: pointer; }
         #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
@@ -76,7 +78,6 @@
         .mode-btn { flex: 1; height: 40px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
 
-        /* 設定画面 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
     </style>
@@ -84,7 +85,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.18</div>
+            <div id="app-title">はよ選果 V1.19</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -146,7 +147,6 @@
         }
         window.onload = loadSettings;
 
-        // --- 表示ロジック V1.18 ---
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fText = document.getElementById('flash-text');
@@ -167,14 +167,9 @@
                     if (count === 1) {
                         overlay.classList.add('single-image-mode');
                     } else {
-                        const isPortrait = window.innerHeight > window.innerWidth;
-                        if (count === 2) { 
-                            imgContainer.style.gridTemplateColumns = isPortrait ? "1fr" : "1fr 1fr"; 
-                            imgContainer.style.gridTemplateRows = isPortrait ? "1fr 1fr" : "1fr"; 
-                        } else { 
-                            imgContainer.style.gridTemplateColumns = "1fr 1fr"; 
-                            imgContainer.style.gridTemplateRows = "1fr 1fr"; 
-                        }
+                        // 2枚の時でも4枚枠を使ってバランスを崩さないように
+                        imgContainer.style.gridTemplateColumns = "1fr 1fr"; 
+                        imgContainer.style.gridTemplateRows = "1fr 1fr"; 
                     }
 
                     activeImages.forEach(src => {
@@ -189,7 +184,7 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // Bluetooth/重量（維持）
+        // Bluetooth/重量処理（維持）
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
@@ -234,7 +229,7 @@
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
 
-        // 設定/共有（維持）
+        // 設定・共有（維持）
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
         document.getElementById('settingsBtn').onclick = openSettings;
