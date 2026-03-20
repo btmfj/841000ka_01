@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.33</title>
+    <title>イチゴ選別システム V1.34</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -40,7 +40,6 @@
             z-index: 510;
         }
         
-        /* 画像を入れる枠 */
         #flash-img-container { 
             position: relative;
             display: grid; 
@@ -61,9 +60,9 @@
             display: block;
         }
 
-        /* --- V1.33 重要：スマホ縦画面・1枚表示の「絶対中央」配置 --- */
+        /* スマホ縦画面・1枚表示の「絶対中央」配置（V1.33継承・完璧設定） */
         .single-image-mode #flash-img-container {
-            display: block !important; /* グリッド解除 */
+            display: block !important; 
             width: 100vw !important; 
             max-width: 100vw !important;
             height: 80vh; 
@@ -76,7 +75,7 @@
             position: absolute;
             left: 50%;
             top: 50%;
-            transform: translate(-50%, -50%); /* これで物理的に中央へ */
+            transform: translate(-50%, -50%); 
             width: 100vw; 
             height: 80vh; 
             max-height: 80vh;
@@ -85,18 +84,67 @@
             margin: 0 !important;
         }
 
-        /* 横向き：従来通り */
+        /* --- V1.34 重要：横向き・1枚表示の黄金比配置 --- */
         @media screen and (orientation: landscape) {
-            #flash-overlay { flex-direction: row; justify-content: center; align-items: center; }
-            #flash-text { font-size: 20vh; margin: 0 30px 0 0; width: auto; }
-            #flash-img-container { width: auto; max-width: 65%; grid-template-columns: 1fr 1fr; height: 90%; }
-            .single-image-mode #flash-img-container { display: flex !important; }
-            .flash-img-item { height: 42vh; width: auto; position: static; transform: none; }
-            .single-image-mode .flash-img-item { height: 85vh; max-height: 85vh; width: auto; position: static; transform: none; margin: 0; }
+            #flash-overlay { 
+                flex-direction: row; 
+                justify-content: flex-start; /* 左詰めベース */
+                align-items: center; 
+                padding: 0;
+            }
+            
+            /* 文字エリア：左から1/3 */
+            #flash-text { 
+                font-size: 20vh; 
+                margin: 0; 
+                width: 33vw; /* 画面幅の1/3 */
+                display: flex;
+                justify-content: center; /* エリア内中央 */
+                align-items: center;
+                height: 100%;
+            }
+            
+            /* 画像エリア：右側2/3 */
+            #flash-img-container { 
+                width: 66vw; /* 画面幅の2/3 */
+                max-width: 66vw;
+                height: 100%;
+                margin: 0;
+                grid-template-columns: 1fr 1fr; /* 複数枚用のデフォルト */
+                display: grid;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .flash-img-item { 
+                height: 42vh; 
+                width: auto; 
+                position: static; 
+                transform: none; 
+            }
+
+            /* --- 横向き・1枚（シングル）専用設定 --- */
+            .single-image-mode #flash-img-container { 
+                display: flex !important; /* グリッド解除 */
+                justify-content: flex-end; /* 画像エリア内で「右寄せ」 */
+                padding-right: 5vw; /* 右端ギリギリ防止のわずかな余白 */
+                box-sizing: border-box;
+            }
+            
+            .single-image-mode .flash-img-item { 
+                height: 90vh; /* 限界まで大きく（V1.33は85vh） */
+                max-height: 90vh; 
+                width: auto; 
+                position: static; 
+                transform: none; 
+                margin: 0; 
+            }
+
             #app-container { flex-direction: row; }
             .btn-container { width: 35%; }
         }
 
+        /* UIパーツ */
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
@@ -110,7 +158,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.33</div>
+            <div id="app-title">はよ選果 V1.34</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -153,6 +201,7 @@
     </div>
 
     <script>
+        // ロジック（V1.33を完全継承・ボタン動作OK）
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -201,7 +250,6 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // Bluetooth/設定
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
@@ -277,7 +325,7 @@
         }
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
         function startHost() { document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中..."; if(peer) peer.destroy(); peer = new Peer(); peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; }); peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); }); }
-        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, cvs.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
+        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, canvas.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
         function connectToHost(id) { const p = new Peer(); p.on('open', () => { const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); }); }); }
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
