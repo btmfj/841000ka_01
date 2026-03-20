@@ -18,7 +18,7 @@
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* --- 判定フラッシュ表示：1枚極大化レイアウト --- */
+        /* --- 判定表示レイアウト --- */
         #flash-overlay { 
             position: fixed; 
             top: 0; left: 0; 
@@ -29,14 +29,14 @@
             z-index: 500; 
             padding: 0; 
             box-sizing: border-box; 
-            justify-content: flex-start; /* 上から詰めて画像領域を稼ぐ */
+            justify-content: flex-start;
         }
         
         #flash-text { 
             font-size: 8vh; 
             font-weight: bold; line-height: 1; color: #fff; 
             -webkit-text-stroke: 1.5px #000; 
-            margin: 10px 0 5px 0; /* 下マージンを最小化 */
+            margin: 10px 0 5px 0; 
             flex-shrink: 0; 
         }
         
@@ -61,26 +61,25 @@
             display: block;
         }
 
-        /* --- 重要：スマホ縦画面・1枚表示の極大化 --- */
+        /* スマホ縦画面・1枚表示の極大化 */
         .single-image-mode #flash-img-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 100vw; /* 画面横幅いっぱい */
+            width: 100vw; 
             max-width: 100vw;
-            height: 80vh; /* 判定文字以外のほぼすべて */
+            height: 80vh; 
             margin: 0;
         }
 
         .single-image-mode .flash-img-item {
-            width: 100vw; /* 左右ギリギリ */
-            height: 80vh; /* 上下ギリギリ */
+            width: 100vw; 
+            height: 80vh; 
             max-height: 80vh;
-            border-radius: 0; /* 画面端まで行くので角丸を消すかお好みで */
-            box-shadow: none;
+            border-radius: 0;
         }
 
-        /* 横向き：現状のバランスを維持 */
+        /* 横向き設定 */
         @media screen and (orientation: landscape) {
             #flash-overlay { flex-direction: row; justify-content: center; align-items: center; padding: 10px; }
             #flash-text { font-size: 20vh; margin: 0 30px 0 0; width: auto; max-width: 30%; }
@@ -91,7 +90,6 @@
             .btn-container { width: 35%; }
         }
 
-        /* 以下、UIパーツとロジック（変更なし） */
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
@@ -127,12 +125,36 @@
         </div>
     </div>
 
+    <div id="settings-modal" class="modal">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b>マスタ設定・データ共有</b>
+            <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
+        </div>
+        <div id="config-list" style="margin-top:10px;"></div>
+        <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
+        <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
+        <div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-top:20px; text-align:center;">
+            <div style="display:flex; gap:10px;">
+                <button onclick="startHost()" style="flex:1; padding:12px; background:#6f42c1; color:white; border:none; border-radius:8px; font-weight:bold;">📡 送信</button>
+                <button onclick="startScan()" style="flex:1; padding:12px; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold;">📷 受信</button>
+            </div>
+            <div id="qrcode" style="display:flex; justify-content:center; margin:10px 0;"></div>
+            <p id="share-status" style="font-size:12px; color:#666;"></p>
+            <video id="video" playsinline style="width:100%; max-width:300px; border-radius:10px; display:none; margin:10px auto;"></video>
+            <canvas id="qr-canvas" style="display:none;"></canvas>
+        </div>
+    </div>
+
     <script>
         const STORAGE_KEY = 'strawberry_config_v106'; 
+        const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+        
         let currentMode = "pre"; 
         let currentRanges = [];
         let sounds = { "START": new Audio("./start.mp3") };
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
+        let peer = null;
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -157,12 +179,9 @@
             if (currentMode === "direct") {
                 const activeImages = imgArray.filter(src => src !== null);
                 const count = activeImages.length;
-                
                 if (count > 0) {
                     imgContainer.style.display = 'grid'; 
-                    if (count === 1) {
-                        overlay.classList.add('single-image-mode');
-                    }
+                    if (count === 1) overlay.classList.add('single-image-mode');
                     activeImages.forEach(src => {
                         const img = document.createElement('img');
                         img.src = src; img.className = 'flash-img-item';
@@ -175,8 +194,85 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // --- Bluetooth・設定等のロジックはV1.29から継続してここに記述 ---
-        // (省略していますが、V1.29のフルコードと同じ機能が動作します)
+        let bluetoothChar = null;
+        let currentWeight = 0, stableWeight = 0, weightHistory = [];
+        document.getElementById('connectBtn').onclick = async () => {
+            try {
+                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
+                await bluetoothChar.startNotifications();
+                document.getElementById('status').innerText = "✅ 稼働中";
+                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
+                    const val = new TextDecoder().decode(e.target.value);
+                    processWeight(parseFloat(val));
+                });
+            } catch (err) { alert(err); }
+        };
+
+        function processWeight(w) {
+            currentWeight = w;
+            document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
+            weightHistory.push(w);
+            if (weightHistory.length > 3) weightHistory.shift();
+            if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
+                if (Math.abs(stableWeight - w) > 0.5) {
+                    if (stableWeight > w) checkDifference(stableWeight, w);
+                    stableWeight = w;
+                }
+            }
+        }
+
+        function checkDifference(oldW, newW) {
+            const diff = oldW - newW;
+            if (diff < 5.0) return;
+            document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
+            const match = currentRanges.find(r => diff >= r.min);
+            if (match) {
+                showFlash(match.label, "#007bff", "#fff", match.images || []);
+                if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); }
+            }
+        }
+
+        document.getElementById('tareBtn').onclick = () => { stableWeight = currentWeight; document.getElementById('diff-display').innerText = "リセット"; if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
+        function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
+        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+        document.getElementById('settingsBtn').onclick = openSettings;
+        function addRangeRow() { currentRanges.push({ min: 0, label: "新規格", audio: "3", images: [null, null, null, null] }); renderConfigList(); }
+        function renderConfigList() {
+            const area = document.getElementById('config-list'); area.innerHTML = '';
+            currentRanges.forEach((r, i) => {
+                const div = document.createElement('div'); div.className = 'config-row';
+                let slotsHtml = '';
+                for(let j=0; j<4; j++) {
+                    const imgSrc = r.images[j];
+                    slotsHtml += `<div style="position:relative; width:45px; height:45px; border:1px dashed #999; display:flex; align-items:center; justify-content:center; background:#eee;">${imgSrc ? `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover;"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>` : `<label style="cursor:pointer;font-size:12px;color:#007bff;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
+                }
+                div.innerHTML = `<div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;"><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:50px;">g〜<input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:70px;"><select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select><button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto; background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">削</button></div><div style="display:flex; gap:10px;">${slotsHtml}</div>`;
+                area.appendChild(div);
+            });
+        }
+        function addImg(e, i, sIdx) {
+            const file = e.target.files[0]; if(!file) return;
+            const reader = new FileReader(); reader.onload = (f) => {
+                const img = new Image(); img.src = f.target.result;
+                img.onload = () => {
+                    const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
+                    const sc = Math.min(300 / img.width, 300 / img.height);
+                    cvs.width = img.width * sc; cvs.height = img.height * sc;
+                    ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.6);
+                    renderConfigList();
+                };
+            }; reader.readAsDataURL(file);
+        }
+        function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
+        function startHost() { document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中..."; if(peer) peer.destroy(); peer = new Peer(); peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; }); peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); }); }
+        async function startScan() { const v = document.getElementById("video"); const s = document.getElementById('share-status'); v.style.display = "block"; s.innerText = "QRをかざしてください"; const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = stream; v.play(); const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d"); const timer = setInterval(() => { if (v.readyState === v.HAVE_ENOUGH_DATA) { cvs.height = v.videoHeight; cvs.width = v.videoWidth; ctx.drawImage(v, 0, 0, cvs.width, cvs.height); const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, cvs.height); if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); } } }, 300); }
+        function connectToHost(id) { const p = new Peer(); p.on('open', () => { const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); }); }); }
+        document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
+        document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
 </body>
 </html>
