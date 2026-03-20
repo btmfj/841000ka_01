@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.37</title>
+    <title>イチゴ選別システム V1.38</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -59,14 +59,13 @@
             display: block;
         }
 
-        /* --- 縦画面・1枚表示：画面いっぱいに大きく --- */
+        /* --- 縦画面・1枚表示：V1.37の完璧な状態を維持 --- */
         .single-image-mode #flash-img-container {
             display: block !important; 
             width: 100vw !important; 
-            height: 75vh !important; /* 縦画面での画像エリアを確保 */
+            height: 75vh !important;
             margin: 0 !important;
             padding: 0 !important;
-            position: relative;
         }
 
         .single-image-mode .flash-img-item {
@@ -75,61 +74,49 @@
             transform: translate(-50%, -50%); 
             width: 100vw !important; 
             height: 75vh !important; 
-            max-height: 75vh !important;
             object-fit: contain;
             margin: 0 !important;
             border-radius: 0;
         }
 
-        /* --- 横向き・1枚表示：完全二分割＆中央 --- */
+        /* --- V1.38 重要：横向き・1枚表示の「右側ど真ん中」配置 --- */
         @media screen and (orientation: landscape) {
             #flash-overlay { 
                 flex-direction: row; 
                 justify-content: flex-start; 
                 align-items: center; 
-                padding: 0;
             }
             
-            /* 左側50%：文字 */
             #flash-text { 
                 font-size: 20vh; 
-                margin: 0; 
                 width: 50vw; 
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                height: 100vh; /* 画面高さ一杯に使う */
+                height: 100%;
             }
             
-            /* 右側50%：画像コンテナ */
             #flash-img-container { 
                 width: 50vw !important; 
-                height: 100vh !important; /* 上下中央のために高さを確保 */
-                margin: 0 !important;
-                padding: 0 !important;
-                display: flex !important; 
-                justify-content: center !important; /* 左右中央 */
-                align-items: center !important; /* 上下中央 */
-                gap: 0 !important;
+                height: 100% !important;
+                display: block !important; /* 絶対配置のためにblockへ */
+                position: relative;
             }
 
-            /* 複数枚時のデフォルト（横向き） */
-            .flash-img-item { 
-                height: 42vh; 
-                width: auto; 
-                position: static; 
-                transform: none; 
-            }
-
-            /* 1枚（シングル）専用：右エリア内で最大化 */
+            /* 1枚（シングル）専用：右側エリア(50%地点)の中心に固定 */
             .single-image-mode .flash-img-item { 
-                width: 48vw !important; /* 右エリア幅のほぼ一杯 */
-                max-width: 48vw !important;
-                height: 90vh !important; /* 上下9割 */
+                position: absolute !important; 
+                left: 50% !important; /* コンテナ(右半分)の中央 */
+                top: 50% !important; /* 画面の上下中央 */
+                transform: translate(-50%, -50%) !important; 
+                
+                /* 切れないように、エリアより一回り小さく最大化 */
+                width: auto !important;
+                max-width: 45vw !important; 
+                height: auto !important;
                 max-height: 90vh !important; 
+                
                 object-fit: contain; 
-                position: static !important; 
-                transform: none !important; 
                 margin: 0 !important; 
                 border-radius: 10px;
             }
@@ -138,7 +125,6 @@
             .btn-container { width: 35%; }
         }
 
-        /* UIパーツ */
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
@@ -152,7 +138,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.37</div>
+            <div id="app-title">はよ選果 V1.38</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
