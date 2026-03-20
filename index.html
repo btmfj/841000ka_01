@@ -3,98 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.13.1</title>
+    <title>イチゴ選別システム V1.14</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        /* 全体レイアウト：固定幅を排除 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; }
         #app-container { 
-            height: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 10px; 
-            box-sizing: border-box; 
-            width: 100%; /* 画面幅いっぱい使う */
+            height: 100%; display: flex; flex-direction: column; align-items: center; 
+            padding: 10px; box-sizing: border-box; width: 100%; 
         }
         
-        #app-title { font-size: 20px; font-weight: bold; color: #d63031; margin-bottom: 2px; }
+        #weight-section { text-align: center; }
+        #app-title { font-size: 18px; font-weight: bold; color: #d63031; }
         #status { color: #555; font-size: 11px; }
-        #weight { font-size: 8vh; font-weight: bold; color: #00b300; line-height: 1; margin: 5px 0; }
+        #weight { font-size: 8vh; font-weight: bold; color: #00b300; line-height: 1; }
         #weight span { font-size: 3vh; color: #000; }
         #diff-display { font-size: 4vh; color: #ff4757; height: 5vh; font-weight: bold; }
         
-        /* フラッシュオーバーレイ：中央配置 */
+        /* フラッシュオーバーレイ */
         #flash-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: none; flex-direction: column; align-items: center; justify-content: center; 
-            z-index: 500; padding: 10px; box-sizing: border-box;
+            z-index: 500; padding: 15px; box-sizing: border-box;
         }
         
         #flash-text { 
-            font-size: 15vh; font-weight: bold; line-height: 1.1; 
+            font-size: 12vh; font-weight: bold; line-height: 1; 
             color: #fff; -webkit-text-stroke: 2px #000;
-            margin-bottom: 5px; flex-shrink: 0;
-            text-align: center;
+            margin-bottom: 10px; flex-shrink: 0; text-align: center;
         }
         
         #flash-img-container { 
             display: grid; width: 100%; height: auto; 
+            max-height: 65vh; /* 縦画面時も少し余裕を持たせる */
             gap: 10px; justify-content: center; align-items: center;
             overflow: hidden; 
         }
         
         .flash-img-item { 
             width: 100%; height: 100%; 
-            object-fit: contain; /* アスペクト比を維持しつつ最大化 */
+            max-height: 100%; /* 親のグリッドセルを越えない */
+            object-fit: contain; 
             border-radius: 10px;
-            box-shadow: none; 
         }
 
-        /* --- V1.13.1 横画面・PCブラウザ用のスタイル修正 --- */
+        /* --- 横画面時の「はみ出し」徹底ガード --- */
         @media screen and (orientation: landscape) {
             #flash-overlay { 
-                flex-direction: row; /* 横並び */
-                justify-content: space-around; 
-                padding: 5vh; /* 上下に余白を持たせる */
+                flex-direction: row; 
+                justify-content: center; 
+                padding: 2vh; 
             }
             #flash-text { 
-                font-size: 20vh; /* テキストサイズを少し抑える */
-                margin: 0 20px 0 0; 
+                font-size: 18vh; 
+                margin: 0 30px 0 0; 
+                max-width: 30%; 
             }
             #flash-img-container { 
-                width: 50%; /* 画像エリアを少し狭く */
-                height: 80vh; /* 高さを画面の80%に制限 */
-                max-height: 80vh; 
+                width: 60%; 
+                height: 90vh; /* 横画面時は縦幅いっぱい使いたいが... */
+                max-height: 85vh; /* ブラウザのバーを考慮して85%に制限 */
             }
-            
-            /* メイン画面の横レイアウト */
-            #app-container { flex-direction: row; flex-wrap: wrap; justify-content: center; align-content: center; gap: 20px; }
-            .btn-container { width: 45%; max-width: 500px; margin: 0; }
-            #weight-section { width: 45%; text-align: center; }
+
+            #app-container { flex-direction: row; justify-content: space-around; align-items: center; }
+            .btn-container { width: 40%; margin: 0; }
         }
 
-        /* UIパーツ：ボタン幅の調整 */
-        .btn-container { width: 100%; max-width: 600px; margin-top: auto; padding-bottom: 5px; }
-        .my-button { width: 100%; height: 60px; font-size: 22px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 5px 0; cursor: pointer; }
+        /* UIパーツ */
+        .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 5px; }
+        .my-button { width: 100%; height: 55px; font-size: 20px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 4px 0; cursor: pointer; }
         #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
         #tareBtn { background-color: #ff8c00; box-shadow: 0 4px #d97700; }
-        .mode-btn { flex: 1; height: 45px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; font-size: 18px; }
+        .mode-btn { flex: 1; height: 40px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
         
         /* 設定画面 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-        .img-slot { position: relative; width: 60px; height: 60px; border: 1px dashed #999; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .img-slot { position: relative; width: 50px; height: 50px; border: 1px dashed #999; display: flex; align-items: center; justify-content: center; }
         .config-img-pre { width: 100%; height: 100%; object-fit: cover; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.13.1</div>
+            <div id="app-title">はよ選果 V1.14</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -108,28 +102,22 @@
         <div class="btn-container">
             <button id="connectBtn" class="my-button">① 接続・開始</button>
             <button id="tareBtn" class="my-button">② 基準リセット</button>
-            <div style="display: flex; gap: 10px; margin: 5px 0;">
+            <div style="display: flex; gap: 10px; margin: 4px 0;">
                 <button id="modePre" class="mode-btn active">事前選果</button>
                 <button id="modeDirect" class="mode-btn">直パック詰め</button>
             </div>
-            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 40px; font-size: 15px;">🛠 設定・共有</button>
+            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 35px; font-size: 13px;">🛠 設定</button>
         </div>
     </div>
 
     <div id="settings-modal" class="modal">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <b style="font-size:18px;">マスタ設定</b>
-            <button onclick="closeSettings()" style="font-size:20px; border:none; background:none;">✕</button>
+            <b>マスタ設定</b>
+            <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
         </div>
         <div id="config-list" style="margin-top:10px;"></div>
-        <button onclick="addRangeRow()" style="width:100%; padding:15px; margin-top:10px;">＋ 判定範囲を追加</button>
-        <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
-            <button class="my-button" style="background:#28a745;" onclick="saveSettings()">✅ 保存</button>
-            <div style="display:flex; gap:10px;">
-                <button onclick="startHost()" style="flex:1; padding:15px; background:#6f42c1; color:white; border-radius:8px;">📡 送信</button>
-                <button onclick="startScan()" style="flex:1; padding:15px; background:#007bff; color:white; border-radius:8px;">📷 受信</button>
-            </div>
-        </div>
+        <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px;">＋ 追加</button>
+        <button class="my-button" style="background:#28a745; margin-top:20px;" onclick="saveSettings()">✅ 保存</button>
     </div>
 
     <script>
@@ -141,21 +129,16 @@
         let currentRanges = [];
         let sounds = { "START": new Audio("./start.mp3") };
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
-        let peer = null;
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
             currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", images: [null, null, null, null] }];
-            currentRanges.forEach(r => {
-                if(!r.images) r.images = [null, null, null, null];
-                while(r.images.length < 4) r.images.push(null);
-            });
+            currentRanges.forEach(r => { if(!r.images) r.images = [null, null, null, null]; });
             currentRanges.sort((a, b) => b.min - a.min);
             currentRanges.forEach(r => { if(r.audio && !sounds[r.audio]) sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3"); });
         }
         window.onload = loadSettings;
 
-        /* --- V1.13.1 表示ロジック（そのまま維持） --- */
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fText = document.getElementById('flash-text');
@@ -188,18 +171,17 @@
                     if (count <= 2) {
                         activeImages.forEach(src => {
                             const img = document.createElement('img');
-                            img.src = src;
-                            img.className = 'flash-img-item';
+                            img.src = src; img.className = 'flash-img-item';
                             imgContainer.appendChild(img);
                         });
                     } else {
                         for (let i = 0; i < 4; i++) {
                             const slot = document.createElement('div');
                             slot.style.width = "100%"; slot.style.height = "100%";
+                            slot.style.display = "flex"; slot.style.justifyContent = "center";
                             if (imgArray[i]) {
                                 const img = document.createElement('img');
-                                img.src = imgArray[i];
-                                img.className = 'flash-img-item';
+                                img.src = imgArray[i]; img.className = 'flash-img-item';
                                 slot.appendChild(img);
                             }
                             imgContainer.appendChild(slot);
@@ -210,10 +192,10 @@
 
             overlay.style.display = 'flex';
             if (window.flashTimer) clearTimeout(window.flashTimer);
-            window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1500 : 4000);
+            window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // Bluetooth / 重量処理（変更なし）
+        // --- Bluetooth / 重量処理 ---
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
 
@@ -262,30 +244,28 @@
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
 
-        // 設定画面系（変更なし）
+        // --- 設定画面系 ---
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
         document.getElementById('settingsBtn').onclick = openSettings;
 
         function renderConfigList() {
-            const area = document.getElementById('config-list');
-            area.innerHTML = '';
+            const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
-                const div = document.createElement('div');
-                div.className = 'config-row';
+                const div = document.createElement('div'); div.className = 'config-row';
                 let slotsHtml = '';
                 for(let j=0; j<4; j++) {
                     const imgSrc = r.images[j];
-                    slotsHtml += `<div class="img-slot">${imgSrc ? `<img src="${imgSrc}" class="config-img-pre"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;cursor:pointer;">×</button>` : `<label style="cursor:pointer;font-size:12px;color:#007bff;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
+                    slotsHtml += `<div class="img-slot">${imgSrc ? `<img src="${imgSrc}" class="config-img-pre"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>` : `<label style="cursor:pointer;font-size:12px;color:#007bff;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
                 div.innerHTML = `
-                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">
-                        <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:60px; height:30px;">g〜
-                        <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:80px; height:30px;">
-                        <select onchange="currentRanges[${i}].audio=this.value" style="height:35px;">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
-                        <button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto; background:#ff4757; color:white; border:none; padding:5px 10px; border-radius:5px;">削除</button>
+                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;">
+                        <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:50px;">g〜
+                        <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:70px;">
+                        <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
+                        <button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto;">削</button>
                     </div>
-                    <div style="display:flex; gap:15px;">${slotsHtml}</div>
+                    <div style="display:flex; gap:10px;">${slotsHtml}</div>
                 `;
                 area.appendChild(div);
             });
