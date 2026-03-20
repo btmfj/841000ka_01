@@ -3,31 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.21</title>
+    <title>イチゴ選別システム V1.22</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        /* 全体の余白を全削除 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; }
-        
-        #app-container { 
-            height: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 5px; /* 必要最小限の余白 */
-            box-sizing: border-box; 
-            width: 100%; 
-        }
+        #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
         
         /* メイン画面の余白を詰める */
         #weight-section { text-align: center; margin: 0; padding: 0; }
         #app-title { font-size: 16px; font-weight: bold; color: #d63031; margin: 0; }
         #status { color: #555; font-size: 10px; margin: 0; }
-        #weight { font-size: 8vh; font-weight: bold; color: #00b300; line-height: 1; margin: 2px 0; }
+        #weight { font-size: 8vh; font-weight: bold; color: #00b300; line-height: 1; margin: 1px 0; }
         #weight span { font-size: 3vh; color: #000; }
-        #diff-display { font-size: 3vh; color: #ff4757; height: 4vh; font-weight: bold; margin: 0; }
+        #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
         /* --- フラッシュオーバーレイ（判定表示） --- */
         #flash-overlay { 
@@ -37,32 +27,33 @@
         }
         
         #flash-text { 
-            font-size: 12vh; font-weight: bold; line-height: 1; color: #fff; 
+            font-size: 10vh; /* テキスト高を少し抑える */
+            font-weight: bold; line-height: 1; color: #fff; 
             -webkit-text-stroke: 1.5px #000; 
-            margin: 0 0 5px 0; /* 下方向のみ最小限の余白 */
+            margin: 0 0 5px 0;
             flex-shrink: 0; text-align: center; 
         }
         
-        /* 画像コンテナ：縦画面で「切れない」よう高さをさらに抑える(60vh) */
+        /* --- V1.22 縦スマホでの4枚表示対策 --- */
         #flash-img-container { 
             display: grid; 
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
+            grid-template-rows: 1fr 1fr; /* 4枚時に高さを半分ずつに固定 */
             width: 100%; 
             height: auto;
-            max-height: 60vh; /* テキストとのバランスを考慮し60%に制限 */
+            max-height: 50vh; /* テキストとのバランスを考慮し50%に制限 */
             gap: 5px; 
             justify-content: center; 
             align-items: center;
             overflow: hidden;
-            margin: 0; padding: 0; /* コンテナ自体の余白を全削除 */
+            margin: 0; padding: 0; 
         }
 
         .flash-img-item { 
             width: 100%; 
             height: 100%; 
-            max-height: 100%; /* 親グリッドセルを突き破らない */
-            object-fit: contain; /* アスペクト比を維持しつつ枠に収める */
+            max-height: 100%; 
+            object-fit: contain; 
             border-radius: 5px; 
             display: block;
         }
@@ -71,38 +62,20 @@
         .single-image-mode #flash-img-container {
             display: flex;
             height: auto;
-            max-height: 70vh; /* 1枚ならもう少し大きく */
+            max-height: 70vh;
         }
 
-        /* --- 横向きスマホ表示の最適化（隙間詰めとはみ出し防止） --- */
+        /* 横向きスマホ表示の最適化（前回同様） */
         @media screen and (orientation: landscape) {
-            #flash-overlay { 
-                flex-direction: row; /* 横並び */
-                padding: 10px; 
-                justify-content: space-between;
-                align-items: center;
-            }
-            #flash-text { 
-                font-size: 25vh; /* テキストサイズをわずかに調整 */
-                margin: 0; 
-                width: 30%; /* テキスト幅を3割に固定し画像を圧迫しない */
-                flex-shrink: 0; 
-            }
-            
-            #flash-img-container { 
-                width: 65%; /* 残りのスペースを画像に */
-                height: 85vh; /* 画面の高さの8.5割以内に収める（切れる防止） */
-                max-height: 85vh;
-                margin: 0;
-            }
-
+            #flash-overlay { flex-direction: row; padding: 10px; justify-content: space-between; align-items: center;}
+            #flash-text { font-size: 25vh; margin: 0; width: 30%; flex-shrink: 0; }
+            #flash-img-container { width: 65%; height: 85vh; max-height: 85vh; margin: 0; }
             .single-image-mode #flash-img-container { height: 90vh; }
-            
             #app-container { flex-direction: row; justify-content: space-around; align-items: center; }
             .btn-container { width: 35%; margin: 0; }
         }
 
-        /* 以下、ボタン・設定画面（維持） */
+        /* UIパーツ */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 2px; }
         .my-button { width: 100%; height: 50px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 3px 0; cursor: pointer; }
         #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
@@ -116,7 +89,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.21</div>
+            <div id="app-title">はよ選果 V1.22</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -159,7 +132,6 @@
     </div>
 
     <script>
-        // JSロジック（そのまま維持）
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
