@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.16</title>
+    <title>イチゴ選別システム V1.17</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
+        
+        /* メイン表示部 */
         #weight-section { text-align: center; }
         #app-title { font-size: 18px; font-weight: bold; color: #d63031; }
         #status { color: #555; font-size: 11px; }
@@ -17,20 +19,60 @@
         #weight span { font-size: 3vh; color: #000; }
         #diff-display { font-size: 4vh; color: #ff4757; height: 5vh; font-weight: bold; }
         
-        #flash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 500; padding: 15px; box-sizing: border-box; }
-        #flash-text { font-size: 12vh; font-weight: bold; line-height: 1; color: #fff; -webkit-text-stroke: 2px #000; margin-bottom: 10px; flex-shrink: 0; text-align: center; }
-        #flash-img-container { display: grid; width: 100%; height: auto; max-height: 70vh; gap: 10px; justify-content: center; align-items: center; }
-        .flash-img-item { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 10px; display: block; }
-        .img-slot-wrapper { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; overflow: hidden; }
+        /* --- フラッシュオーバーレイ（判定表示） --- */
+        #flash-overlay { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 500; padding: 5px; box-sizing: border-box; 
+        }
+        
+        #flash-text { 
+            font-size: 12vh; font-weight: bold; line-height: 1; color: #fff; 
+            -webkit-text-stroke: 2px #000; margin-bottom: 5px; flex-shrink: 0; text-align: center; 
+        }
+        
+        #flash-img-container { 
+            display: grid; width: 100%; height: auto; 
+            max-height: 75vh; gap: 5px; justify-content: center; align-items: center;
+        }
+
+        /* 1枚の時に画面ギリギリまで広げる設定 */
+        .single-image #flash-img-container {
+            width: 100vw;
+            height: 75vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .flash-img-item { 
+            max-width: 98%; 
+            max-height: 98%; 
+            width: auto; 
+            height: auto; 
+            object-fit: contain; 
+            border-radius: 8px; 
+            display: block;
+        }
+
+        /* 1枚の時だけさらに巨大化 */
+        .single-image .flash-img-item {
+            max-width: 100%;
+            max-height: 100%;
+        }
 
         @media screen and (orientation: landscape) {
-            #flash-overlay { flex-direction: row; justify-content: center; padding: 5vh; }
-            #flash-text { font-size: 20vh; margin: 0 40px 0 0; max-width: 30%; }
-            #flash-img-container { width: 60%; height: 80vh; max-height: 80vh; }
+            #flash-overlay { flex-direction: row; justify-content: space-between; padding: 2vh; }
+            #flash-text { font-size: 25vh; margin: 0; width: 35%; flex-shrink: 0; }
+            #flash-img-container { width: 63%; height: 95vh; max-height: 95vh; }
+            
+            .single-image #flash-img-container { height: 98vh; width: 65%; }
+
             #app-container { flex-direction: row; justify-content: space-around; align-items: center; }
             .btn-container { width: 40%; margin: 0; }
         }
 
+        /* ボタン・UI関係 */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 5px; }
         .my-button { width: 100%; height: 55px; font-size: 20px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 4px 0; cursor: pointer; }
         #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
@@ -38,18 +80,17 @@
         .mode-btn { flex: 1; height: 40px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
 
-        /* 設定・共有用 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
         .share-area { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: center; }
-        #video { width: 100%; max-width: 400px; border-radius: 10px; display: none; margin: 10px auto; }
+        #video { width: 100%; max-width: 300px; border-radius: 10px; display: none; margin: 10px auto; }
         #qrcode { display: flex; justify-content: center; margin: 10px 0; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.16</div>
+            <div id="app-title">はよ選果 V1.17</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -76,16 +117,14 @@
             <b>マスタ設定・データ共有</b>
             <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
         </div>
-        
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
-
         <div class="share-area">
             <h3 style="margin:0 0 10px 0; font-size:16px;">設定データの共有</h3>
             <div style="display:flex; gap:10px;">
-                <button onclick="startHost()" style="flex:1; padding:12px; background:#6f42c1; color:white; border:none; border-radius:8px; font-weight:bold;">📡 設定を送る</button>
-                <button onclick="startScan()" style="flex:1; padding:12px; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold;">📷 設定を受け取る</button>
+                <button onclick="startHost()" style="flex:1; padding:12px; background:#6f42c1; color:white; border:none; border-radius:8px; font-weight:bold;">📡 送信</button>
+                <button onclick="startScan()" style="flex:1; padding:12px; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold;">📷 受信</button>
             </div>
             <div id="qrcode"></div>
             <p id="share-status" style="font-size:12px; color:#666;"></p>
@@ -114,72 +153,7 @@
         }
         window.onload = loadSettings;
 
-        // --- 設定の送信 (Host) ---
-        function startHost() {
-            document.getElementById('qrcode').innerHTML = "";
-            document.getElementById('share-status').innerText = "接続準備中...";
-            if(peer) peer.destroy();
-            peer = new Peer();
-            peer.on('open', (id) => {
-                new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 });
-                document.getElementById('share-status').innerText = "このQRを相手の端末で読み取ってください";
-            });
-            peer.on('connection', (conn) => {
-                conn.on('open', () => {
-                    conn.send(currentRanges);
-                    document.getElementById('share-status').innerText = "送信完了！";
-                    setTimeout(() => { if(peer) peer.destroy(); document.getElementById('qrcode').innerHTML = ""; }, 3000);
-                });
-            });
-        }
-
-        // --- 設定の受信 (Scan) ---
-        async function startScan() {
-            const video = document.getElementById("video");
-            const status = document.getElementById('share-status');
-            video.style.display = "block";
-            status.innerText = "QRコードをかざしてください";
-
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            video.play();
-
-            const canvas = document.getElementById("qr-canvas");
-            const ctx = canvas.getContext("2d");
-
-            const timer = setInterval(() => {
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    canvas.height = video.videoHeight;
-                    canvas.width = video.videoWidth;
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-                    if (code) {
-                        clearInterval(timer);
-                        stream.getTracks().forEach(t => t.stop());
-                        video.style.display = "none";
-                        connectToHost(code.data);
-                    }
-                }
-            }, 300);
-        }
-
-        function connectToHost(hostId) {
-            document.getElementById('share-status').innerText = "データ取得中...";
-            const p = new Peer();
-            p.on('open', () => {
-                const conn = p.connect(hostId);
-                conn.on('data', (data) => {
-                    if (confirm("新しい設定を受信しました。上書き保存しますか？")) {
-                        currentRanges = data;
-                        saveSettings();
-                        location.reload();
-                    }
-                    p.destroy();
-                });
-            });
-        }
-
-        // --- 表示ロジック・その他（前回同様） ---
+        // --- 表示ロジック V1.17 (1枚時巨大化) ---
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fText = document.getElementById('flash-text');
@@ -188,12 +162,16 @@
             overlay.style.backgroundColor = color;
             imgContainer.innerHTML = '';
             imgContainer.style.display = 'none';
+            overlay.classList.remove('single-image');
 
             if (currentMode === "direct") {
                 const activeImages = imgArray.filter(src => src !== null);
                 const count = activeImages.length;
+                
                 if (count > 0) {
                     imgContainer.style.display = 'grid';
+                    if (count === 1) overlay.classList.add('single-image');
+
                     const isPortrait = window.innerHeight > window.innerWidth;
                     if (count === 1) { imgContainer.style.gridTemplateColumns = "1fr"; imgContainer.style.gridTemplateRows = "1fr"; }
                     else if (count === 2) { 
@@ -201,19 +179,11 @@
                         imgContainer.style.gridTemplateRows = isPortrait ? "1fr 1fr" : "1fr"; 
                     } else { imgContainer.style.gridTemplateColumns = "1fr 1fr"; imgContainer.style.gridTemplateRows = "1fr 1fr"; }
 
-                    if (count <= 2) {
-                        activeImages.forEach(src => {
-                            const w = document.createElement('div'); w.className = 'img-slot-wrapper';
-                            const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item';
-                            w.appendChild(img); imgContainer.appendChild(w);
-                        });
-                    } else {
-                        for (let i = 0; i < 4; i++) {
-                            const w = document.createElement('div'); w.className = 'img-slot-wrapper';
-                            if (imgArray[i]) { const img = document.createElement('img'); img.src = imgArray[i]; img.className = 'flash-img-item'; w.appendChild(img); }
-                            imgContainer.appendChild(w);
-                        }
-                    }
+                    activeImages.forEach(src => {
+                        const img = document.createElement('img');
+                        img.src = src; img.className = 'flash-img-item';
+                        imgContainer.appendChild(img);
+                    });
                 }
             }
             overlay.style.display = 'flex';
@@ -221,6 +191,7 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
+        // --- Bluetooth / 重量処理 (基本機能) ---
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
 
@@ -269,14 +240,12 @@
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
 
+        // --- 設定・共有系 (PeerJS / jsQR) ---
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
         document.getElementById('settingsBtn').onclick = openSettings;
 
-        function addRangeRow() {
-            currentRanges.push({ min: 0, label: "新規格", audio: "3", images: [null, null, null, null] });
-            renderConfigList();
-        }
+        function addRangeRow() { currentRanges.push({ min: 0, label: "新規格", audio: "3", images: [null, null, null, null] }); renderConfigList(); }
 
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
@@ -289,34 +258,58 @@
                 }
                 div.innerHTML = `
                     <div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;">
-                        <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:50px; height:30px;">g〜
-                        <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:70px; height:30px;">
-                        <select onchange="currentRanges[${i}].audio=this.value" style="height:35px;">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
+                        <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:50px;">g〜
+                        <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:70px;">
+                        <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
                         <button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto; background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">削</button>
                     </div>
                     <div style="display:flex; gap:10px;">${slotsHtml}</div>
-                `;
-                area.appendChild(div);
+                `; area.appendChild(div);
             });
         }
-        function addImg(e, i, slotIndex) {
+        function addImg(e, i, sIdx) {
             const file = e.target.files[0]; if(!file) return;
-            const reader = new FileReader();
-            reader.onload = (f) => {
+            const r = new FileReader(); r.onload = (f) => {
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
-                    const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-                    const scale = Math.min(300 / img.width, 300 / img.height);
-                    canvas.width = img.width * scale; canvas.height = img.height * scale;
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    currentRanges[i].images[slotIndex] = canvas.toDataURL('image/jpeg', 0.6);
+                    const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
+                    const sc = Math.min(300 / img.width, 300 / img.height);
+                    cvs.width = img.width * sc; cvs.height = img.height * sc;
+                    ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.6);
                     renderConfigList();
                 };
-            };
-            reader.readAsDataURL(file);
+            }; r.readAsDataURL(file);
         }
-        function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("本体に保存しました。"); }
-        
+        function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
+
+        function startHost() {
+            document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中...";
+            if(peer) peer.destroy(); peer = new Peer();
+            peer.on('open', (id) => { new QRCode(document.getElementById("qrcode"), { text: id, width: 200, height: 200 }); document.getElementById('share-status').innerText = "相手にスキャンさせてください"; });
+            peer.on('connection', (conn) => { conn.on('open', () => { conn.send(currentRanges); document.getElementById('share-status').innerText = "送信完了"; }); });
+        }
+        async function startScan() {
+            const v = document.getElementById("video"); const s = document.getElementById('share-status');
+            v.style.display = "block"; s.innerText = "QRをかざしてください";
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            v.srcObject = stream; v.play();
+            const cvs = document.getElementById("qr-canvas"); const ctx = cvs.getContext("2d");
+            const timer = setInterval(() => {
+                if (v.readyState === v.HAVE_ENOUGH_DATA) {
+                    cvs.height = v.videoHeight; cvs.width = v.videoWidth;
+                    ctx.drawImage(v, 0, 0, cvs.width, cvs.height);
+                    const code = jsQR(ctx.getImageData(0, 0, cvs.width, cvs.height).data, cvs.width, cvs.height);
+                    if (code) { clearInterval(timer); stream.getTracks().forEach(t => t.stop()); v.style.display = "none"; connectToHost(code.data); }
+                }
+            }, 300);
+        }
+        function connectToHost(id) {
+            const p = new Peer(); p.on('open', () => {
+                const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); });
+            });
+        }
+
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
