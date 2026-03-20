@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.72d</title>
+    <title>イチゴ選別システム V1.73</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -36,13 +36,12 @@
         #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border-radius: 10px; border: 4px solid #007bff; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4285F4; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; margin: 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #debug-log { font-size: 9px; color: #666; margin-top: 5px; text-align: left; background: #eee; padding: 5px; border-radius: 4px; display: none; white-space: pre-wrap; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.72d</div>
+            <div id="app-title">はよ選果 V1.73</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -71,7 +70,6 @@
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-        
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwyenDfL594vt_ymgUkJryrdeNGMdG-qxVtGPHb0Bi0YrWbzL0L9jaAucKp42Jucw4/exec";
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
@@ -85,55 +83,33 @@
         }
         window.onload = loadSettings;
 
-        /* --- Chromebook安定化版送信 (XMLHttpRequest) --- */
+        // 送信
         function syncToGas() {
-            const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), 
-                  qrDiv = document.getElementById('qrcode'), debug = document.getElementById('debug-log');
-            
-            loader.style.display = 'block'; debug.style.display = 'none';
-            msg.innerText = "高画質データを送信中..."; msg.style.color = "#444";
-            qrDiv.innerHTML = '';
+            const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
+            loader.style.display = 'block'; msg.innerText = "高画質データを送信中..."; qrDiv.innerHTML = '';
 
             const xhr = new XMLHttpRequest();
-            // Googleのリダイレクトを許可するため、標準的なPOSTを使用
             xhr.open("POST", GAS_URL, true);
-            
-            // 重要なポイント：Content-Typeを敢えて指定しないか、text/plainにする
-            // これにより、Chromeの「プリフライトリクエスト」によるブロックを回避します
             xhr.setRequestHeader("Content-Type", "text/plain;charset=utf-8");
-
             xhr.onload = function() {
                 loader.style.display = 'none';
                 if (xhr.status >= 200 && xhr.status < 400) {
-                    try {
-                        const result = JSON.parse(xhr.responseText);
-                        if (result.id) {
-                            new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
-                            msg.style.color = "#22c55e";
-                            msg.innerText = "✅ 同期QRを発行しました！";
-                        } else { throw new Error("IDが空です"); }
-                    } catch(e) {
-                        msg.innerText = "❌ 応答解析エラー";
-                        debug.style.display = 'block';
-                        debug.innerText = "サーバーからの返信が正しくありません。GASの公開設定を再確認してください。";
+                    const result = JSON.parse(xhr.responseText);
+                    if (result.id) {
+                        new QRCode(qrDiv, { text: result.id, width: 160, height: 160 });
+                        msg.style.color = "#22c55e"; msg.innerText = "✅ 同期QRを発行しました！";
                     }
-                } else {
-                    msg.innerText = "❌ 接続失敗 (" + xhr.status + ")";
-                }
+                } else { msg.innerText = "❌ 接続失敗 (" + xhr.status + ")"; }
             };
-
             xhr.onerror = function() {
                 loader.style.display = 'none';
                 msg.style.color = "#ef4444";
-                msg.innerText = "❌ 通信が遮断されました";
-                debug.style.display = 'block';
-                debug.innerText = "【Chromebookでの解決策】\n1. シークレットウィンドウで試す\n2. 広告ブロック等の拡張機能をオフにする\n3. 学校/会社の制限がないか確認する";
+                msg.innerText = "❌ ブロックされました（拡張機能をOFFにしてください）";
             };
-
             xhr.send(JSON.stringify(currentRanges));
         }
 
-        /* --- その他ロジック --- */
+        // 受信
         async function scanGasQR() {
             try {
                 const video = document.createElement("video"), canvas = document.getElementById("v-canvas"), ctx = canvas.getContext("2d");
@@ -148,7 +124,7 @@
                         if (code) { 
                             stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none";
                             fetch(`${GAS_URL}?id=${code.data}`).then(res => res.json()).then(data => {
-                                if (data && data.length > 0 && confirm("同期しますか？")) {
+                                if (data && data.length > 0 && confirm("同期（上書き）しますか？")) {
                                     localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
                                 }
                             });
@@ -161,6 +137,7 @@
             } catch (err) { alert("カメラ起動に失敗しました"); }
         }
 
+        /* 以下、秤・設定ロジック */
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -238,18 +215,17 @@
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定 V1.72d</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定・同期 V1.73</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px; border:1px solid #ccc;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 本体に保存</button>
 
         <div class="share-card">
-            <h3 style="font-size:14px; margin:0 0 5px 0; color:#4285F4;">☁️ Google同期（高画質）</h3>
+            <h3 style="font-size:14px; margin:0 0 5px 0; color:#4285F4;">☁️ Google同期</h3>
             <button class="my-button" style="background:#4285F4;" onclick="syncToGas()">1. 同期用QRを発行</button>
             <div id="loader" class="loader"></div>
             <div id="qrcode"></div>
             <p id="sync-msg" style="font-size:11px; font-weight:bold; margin:5px 0; min-height:15px;"></p>
-            <div id="debug-log"></div>
             <div style="margin:10px 0; border-top:1px dashed #4285F4;"></div>
             <button class="my-button" style="background:#34a853;" onclick="scanGasQR()">2. 子機でスキャンして取込</button>
             <canvas id="v-canvas"></canvas>
