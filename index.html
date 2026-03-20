@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.42</title>
+    <title>イチゴ選別システム V1.43</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -15,36 +15,35 @@
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* --- 判定フラッシュ表示（Grid方式の土台） --- */
+        /* --- 判定フラッシュ表示 --- */
         #flash-overlay { 
             position: fixed; 
             top: 0; left: 0; 
-            width: 100vw; height: 100vh; 
+            width: 100%; height: 100%; /* vwから%に変更 */
             z-index: 500; 
-            display: none; /* 初期は非表示 */
+            display: none; 
+            box-sizing: border-box;
         }
         
-        /* JSで .is-active が付与された時の縦画面（Portrait）設定 */
         #flash-overlay.is-active {
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* 縦画面デフォルト */
         }
 
         #flash-text-cell {
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 100vw;
-            height: 25vh; /* 縦画面：上25% */
+            width: 100%;
+            height: 25%; /* vhから%に変更 */
         }
 
         #flash-img-cell {
+            width: 100%;
+            height: 75%; /* vhから%に変更 */
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 100vw;
-            height: 75vh; /* 縦画面：下75% */
-            overflow: hidden;
         }
 
         #flash-text { 
@@ -54,8 +53,10 @@
             margin: 0;
         }
         
+        /* 画像を置く絶対座標の「基準（親）」になる箱 */
         #flash-img-container { 
             width: 100%; height: 100%;
+            position: relative; /* 絶対配置の基準点 */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -68,43 +69,43 @@
             border-radius: 10px;
         }
 
-        /* 縦画面1枚：枠いっぱいに大きく */
+        /* 縦画面1枚：絶対座標でド真ん中に全画面表示 */
         .single-image-mode .flash-img-item {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
             width: 100%; height: 100%;
             max-width: 100%; max-height: 100%;
             border-radius: 0;
         }
 
-        /* --- V1.42 重要：横向き（Landscape）の「鉄壁グリッド50/50」 --- */
+        /* --- V1.43 重要：横向き（Landscape）の「%」と「絶対座標」設定 --- */
         @media screen and (orientation: landscape) {
             #flash-overlay.is-active {
-                display: grid !important;
-                grid-template-columns: 50vw 50vw; /* 画面を強制的に50%ずつに割る */
-                grid-template-rows: 100vh;
+                flex-direction: row; 
             }
             
             #flash-text-cell {
-                width: 50vw; height: 100vh;
+                width: 50%; height: 100%; /* vwを使わず厳密に半分の50% */
             }
             
             #flash-img-cell {
-                width: 50vw; height: 100vh;
-                /* 右セルの「完全なる中央」に画像を配置 */
-                display: flex !important;
-                justify-content: center !important; /* 左右中央 */
-                align-items: center !important;     /* 上下中央 */
+                width: 50%; height: 100%; /* vwを使わず厳密に半分の50% */
             }
 
             #flash-text { font-size: 25vh; }
 
-            /* 横画面1枚：右セルのど真ん中に、はみ出さないギリギリのサイズで配置 */
+            /* 横画面1枚：右セルの座標X:50% Y:50% にピン留め */
             .single-image-mode .flash-img-item {
+                position: absolute !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
                 width: auto !important;
                 height: auto !important;
-                max-width: 95% !important; /* 50vwの95%まで */
-                max-height: 95% !important; /* 100vhの95%まで */
+                max-width: 95% !important;
+                max-height: 95% !important;
                 border-radius: 10px;
-                margin: auto; /* 万が一のための自動余白 */
             }
 
             #app-container { flex-direction: row; }
@@ -125,7 +126,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.42</div>
+            <div id="app-title">はよ選果 V1.43</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -183,9 +184,7 @@
                 }
             }
             
-            // V1.42修正: is-activeクラスで表示を切り替え
             overlay.classList.add('is-active');
-            
             if (window.flashTimer) clearTimeout(window.flashTimer);
             window.flashTimer = setTimeout(() => overlay.classList.remove('is-active'), currentMode === "pre" ? 1200 : 3500);
         }
