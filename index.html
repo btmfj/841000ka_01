@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.17</title>
+    <title>イチゴ選別システム V1.18</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -11,7 +11,6 @@
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         
-        /* メイン表示部 */
         #weight-section { text-align: center; }
         #app-title { font-size: 18px; font-weight: bold; color: #d63031; }
         #status { color: #555; font-size: 11px; }
@@ -19,60 +18,57 @@
         #weight span { font-size: 3vh; color: #000; }
         #diff-display { font-size: 4vh; color: #ff4757; height: 5vh; font-weight: bold; }
         
-        /* --- フラッシュオーバーレイ（判定表示） --- */
+        /* フラッシュオーバーレイ */
         #flash-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: none; flex-direction: column; align-items: center; justify-content: center; 
-            z-index: 500; padding: 5px; box-sizing: border-box; 
+            z-index: 500; padding: 0; box-sizing: border-box; 
         }
         
         #flash-text { 
-            font-size: 12vh; font-weight: bold; line-height: 1; color: #fff; 
-            -webkit-text-stroke: 2px #000; margin-bottom: 5px; flex-shrink: 0; text-align: center; 
+            font-size: 15vh; font-weight: bold; line-height: 1; color: #fff; 
+            -webkit-text-stroke: 2px #000; margin: 10px; flex-shrink: 0; text-align: center; 
         }
         
+        /* 画像コンテナ：デフォルトは4枚用グリッド */
         #flash-img-container { 
-            display: grid; width: 100%; height: auto; 
-            max-height: 75vh; gap: 5px; justify-content: center; align-items: center;
+            display: grid; width: 100%; height: 100%; 
+            gap: 10px; justify-content: center; align-items: center;
+            flex: 1; overflow: hidden;
         }
 
-        /* 1枚の時に画面ギリギリまで広げる設定 */
-        .single-image #flash-img-container {
-            width: 100vw;
-            height: 75vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
+        /* 画像自体の設定 */
         .flash-img-item { 
-            max-width: 98%; 
-            max-height: 98%; 
-            width: auto; 
-            height: auto; 
+            width: 100%; height: 100%; 
             object-fit: contain; 
-            border-radius: 8px; 
+            border-radius: 5px; 
             display: block;
         }
 
-        /* 1枚の時だけさらに巨大化 */
-        .single-image .flash-img-item {
-            max-width: 100%;
-            max-height: 100%;
+        /* --- 1枚の時の特別スタイル（ここが重要） --- */
+        .single-image-mode #flash-img-container {
+            display: flex; /* グリッドを解除 */
+            width: 100%;
+            height: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        .single-image-mode .flash-img-item {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
         }
 
         @media screen and (orientation: landscape) {
-            #flash-overlay { flex-direction: row; justify-content: space-between; padding: 2vh; }
-            #flash-text { font-size: 25vh; margin: 0; width: 35%; flex-shrink: 0; }
-            #flash-img-container { width: 63%; height: 95vh; max-height: 95vh; }
+            #flash-overlay { flex-direction: row; padding: 10px; }
+            #flash-text { font-size: 30vh; margin-right: 20px; min-width: 30%; }
             
-            .single-image #flash-img-container { height: 98vh; width: 65%; }
-
             #app-container { flex-direction: row; justify-content: space-around; align-items: center; }
             .btn-container { width: 40%; margin: 0; }
         }
 
-        /* ボタン・UI関係 */
+        /* ボタン等 */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 5px; }
         .my-button { width: 100%; height: 55px; font-size: 20px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 4px 0; cursor: pointer; }
         #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
@@ -80,17 +76,15 @@
         .mode-btn { flex: 1; height: 40px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
 
+        /* 設定画面 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-        .share-area { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: center; }
-        #video { width: 100%; max-width: 300px; border-radius: 10px; display: none; margin: 10px auto; }
-        #qrcode { display: flex; justify-content: center; margin: 10px 0; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.17</div>
+            <div id="app-title">はよ選果 V1.18</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -120,15 +114,14 @@
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
-        <div class="share-area">
-            <h3 style="margin:0 0 10px 0; font-size:16px;">設定データの共有</h3>
+        <div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-top:20px; text-align:center;">
             <div style="display:flex; gap:10px;">
                 <button onclick="startHost()" style="flex:1; padding:12px; background:#6f42c1; color:white; border:none; border-radius:8px; font-weight:bold;">📡 送信</button>
                 <button onclick="startScan()" style="flex:1; padding:12px; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold;">📷 受信</button>
             </div>
-            <div id="qrcode"></div>
+            <div id="qrcode" style="display:flex; justify-content:center; margin:10px 0;"></div>
             <p id="share-status" style="font-size:12px; color:#666;"></p>
-            <video id="video" playsinline></video>
+            <video id="video" playsinline style="width:100%; max-width:300px; border-radius:10px; display:none; margin:10px auto;"></video>
             <canvas id="qr-canvas" style="display:none;"></canvas>
         </div>
     </div>
@@ -153,31 +146,36 @@
         }
         window.onload = loadSettings;
 
-        // --- 表示ロジック V1.17 (1枚時巨大化) ---
+        // --- 表示ロジック V1.18 ---
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fText = document.getElementById('flash-text');
             const imgContainer = document.getElementById('flash-img-container');
+            
             fText.innerText = text;
             overlay.style.backgroundColor = color;
             imgContainer.innerHTML = '';
             imgContainer.style.display = 'none';
-            overlay.classList.remove('single-image');
+            overlay.classList.remove('single-image-mode');
 
             if (currentMode === "direct") {
                 const activeImages = imgArray.filter(src => src !== null);
                 const count = activeImages.length;
                 
                 if (count > 0) {
-                    imgContainer.style.display = 'grid';
-                    if (count === 1) overlay.classList.add('single-image');
-
-                    const isPortrait = window.innerHeight > window.innerWidth;
-                    if (count === 1) { imgContainer.style.gridTemplateColumns = "1fr"; imgContainer.style.gridTemplateRows = "1fr"; }
-                    else if (count === 2) { 
-                        imgContainer.style.gridTemplateColumns = isPortrait ? "1fr" : "1fr 1fr"; 
-                        imgContainer.style.gridTemplateRows = isPortrait ? "1fr 1fr" : "1fr"; 
-                    } else { imgContainer.style.gridTemplateColumns = "1fr 1fr"; imgContainer.style.gridTemplateRows = "1fr 1fr"; }
+                    imgContainer.style.display = (count === 1) ? 'flex' : 'grid';
+                    if (count === 1) {
+                        overlay.classList.add('single-image-mode');
+                    } else {
+                        const isPortrait = window.innerHeight > window.innerWidth;
+                        if (count === 2) { 
+                            imgContainer.style.gridTemplateColumns = isPortrait ? "1fr" : "1fr 1fr"; 
+                            imgContainer.style.gridTemplateRows = isPortrait ? "1fr 1fr" : "1fr"; 
+                        } else { 
+                            imgContainer.style.gridTemplateColumns = "1fr 1fr"; 
+                            imgContainer.style.gridTemplateRows = "1fr 1fr"; 
+                        }
+                    }
 
                     activeImages.forEach(src => {
                         const img = document.createElement('img');
@@ -191,10 +189,9 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // --- Bluetooth / 重量処理 (基本機能) ---
+        // Bluetooth/重量（維持）
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
-
         document.getElementById('connectBtn').onclick = async () => {
             try {
                 const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
@@ -209,7 +206,6 @@
                 });
             } catch (err) { alert(err); }
         };
-
         function processWeight(w) {
             currentWeight = w;
             document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
@@ -222,7 +218,6 @@
                 }
             }
         }
-
         function checkDifference(oldW, newW) {
             const diff = oldW - newW;
             if (diff < 5.0) return;
@@ -233,20 +228,17 @@
                 if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); }
             }
         }
-
         document.getElementById('tareBtn').onclick = () => {
             stableWeight = currentWeight;
             document.getElementById('diff-display').innerText = "リセット";
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
 
-        // --- 設定・共有系 (PeerJS / jsQR) ---
+        // 設定/共有（維持）
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
         document.getElementById('settingsBtn').onclick = openSettings;
-
         function addRangeRow() { currentRanges.push({ min: 0, label: "新規格", audio: "3", images: [null, null, null, null] }); renderConfigList(); }
-
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
@@ -256,20 +248,13 @@
                     const imgSrc = r.images[j];
                     slotsHtml += `<div style="position:relative; width:45px; height:45px; border:1px dashed #999; display:flex; align-items:center; justify-content:center; background:#eee;">${imgSrc ? `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover;"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>` : `<label style="cursor:pointer;font-size:12px;color:#007bff;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
-                div.innerHTML = `
-                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;">
-                        <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:50px;">g〜
-                        <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:70px;">
-                        <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
-                        <button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto; background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">削</button>
-                    </div>
-                    <div style="display:flex; gap:10px;">${slotsHtml}</div>
-                `; area.appendChild(div);
+                div.innerHTML = `<div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;"><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:50px;">g〜<input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:70px;"><select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select><button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto; background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">削</button></div><div style="display:flex; gap:10px;">${slotsHtml}</div>`;
+                area.appendChild(div);
             });
         }
         function addImg(e, i, sIdx) {
             const file = e.target.files[0]; if(!file) return;
-            const r = new FileReader(); r.onload = (f) => {
+            const reader = new FileReader(); reader.onload = (f) => {
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
@@ -279,10 +264,9 @@
                     currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.6);
                     renderConfigList();
                 };
-            }; r.readAsDataURL(file);
+            }; reader.readAsDataURL(file);
         }
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("保存完了"); }
-
         function startHost() {
             document.getElementById('qrcode').innerHTML = ""; document.getElementById('share-status').innerText = "準備中...";
             if(peer) peer.destroy(); peer = new Peer();
@@ -309,7 +293,6 @@
                 const c = p.connect(id); c.on('data', (d) => { if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = d; saveSettings(); location.reload(); } p.destroy(); });
             });
         }
-
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
