@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>イチゴ選別システム V1.04</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        body { background-color: #ffe4e1; color: #000; text-align: center; font-family: sans-serif; padding: 10px; overflow-x: hidden; }
+        #app-title { font-size: 28px; font-weight: bold; color: #d63031; margin-top: 5px; margin-bottom: 5px; letter-spacing: 2px; }
+        #status { color: #555; font-size: 14px; margin-bottom: 5px; }
+        #weight { font-size: 80px; font-weight: bold; color: #00b300; margin: 5px 0; }
+        #weight span { font-size: 24px; color: #000; }
+        #diff-display { font-size: 30px; color: #ff4757; height: 35px; }
+        
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; font-weight: bold; padding: 20px; box-sizing: border-box; }
+        @media screen and (orientation: landscape) { #flash-overlay { flex-direction: row; justify-content: space-around; } #flash-text { margin-bottom: 0 !important; margin-right: 20px; } #flash-img { max-width: 45% !important; max-height: 80% !important; } }
+        #flash-text { font-size: 140px; line-height: 1; margin-bottom: 20px; }
+        #flash-img { max-width: 80%; max-height: 50%; object-fit: contain; display: none; }
+
+        .btn-container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; }
+        .my-button { width: 95%; max-width: 400px; height: 70px; font-size: 22px; font-weight: bold; border-radius: 20px; border: none; color: white; margin: 5px 0; cursor: pointer; transition: 0.2s; }
+        #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
+        #tareBtn { background-color: #ff8c00; box-shadow: 0 4px #d97700; }
+        #settingsBtn { background-color: #6c757d; box-shadow: 0 4px #545b62; margin-top: 15px; height: 50px; font-size: 18px; }
+
+        .mode-container { display: flex; width: 95%; max-width: 400px; gap: 10px; margin-top: 5px; }
+        .mode-btn { flex: 1; height: 50px; font-size: 16px; font-weight: bold; border-radius: 15px; border: 2px solid #d63031; background-color: #fff; color: #d63031; cursor: pointer; }
+        .mode-btn.active { background-color: #d63031; color: #fff; box-shadow: inset 4px 4px 8px rgba(0,0,0,0.3); transform: translateY(2px); }
+
+        /* 設定モーダル */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 200; overflow-y: auto; padding: 20px; box-sizing: border-box; text-align: left; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .modal-title { font-size: 22px; font-weight: bold; color: #d63031; }
+        
+        .config-row { border: 1px solid #ccc; border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #f9f9f9; }
+        .config-row input[type="number"] { width: 60px; padding: 5px; font-size: 16px; }
+        .config-row input[type="text"] { width: 90px; padding: 5px; font-size: 16px; }
+        
+        .img-preview { width: 60px; height: 60px; object-fit: cover; border: 1px solid #ccc; margin-left: 10px; display: none; border-radius: 5px; }
+        .file-input-label { background: #007bff; color: white; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 14px; display: inline-block; }
+        
+        .settings-footer { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .save-btn { background: #28a745; color: white; border: none; padding: 15px; border-radius: 10px; font-size: 18px; font-weight: bold; }
+        .sync-btn { background: #6f42c1; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; }
+
+        /* QRコード・スキャナー */
+        #qr-display-area, #scanner-container { display: none; text-align: center; border: 2px dashed #6f42c1; padding: 15px; margin-top: 15px; border-radius: 15px; background: #fdfaff; }
+        #qrcode { display: inline-block; margin: 10px 0; }
+        #scanner-video { width: 100%; max-width: 320px; border-radius: 10px; border: 2px solid #d63031; }
+        
+        #wake-lock-video { position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <video id="wake-lock-video" playsinline loop muted></video>
+    <div id="app-title">はよ選果 V1.04</div>
+
+    <div id="flash-overlay">
+        <div id="flash-text"></div>
+        <img id="flash-img" src="" alt="size-image">
+    </div>
+
+    <div id="status">Bluetooth未接続</div>
+    <div id="weight">0.0<span>g</span></div>
+    <div id="diff-display">--.- g 減</div>
+    
+    <div class="btn-container">
+        <button id="connectBtn" class="my-button">① 接続・開始</button>
+        <button id="tareBtn" class="my-button">② 基準リセット</button>
+        
+        <div class="mode-container">
+            <button id="modePre" class="mode-btn active">事前選果</button>
+            <button id="modeDirect" class="mode-btn">直パック詰め</button>
+        </div>
+        <button id="settingsBtn" class="my-button">🛠 設定・共有</button>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-header">
+            <div class="modal-title">マスタ設定</div>
+            <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
+        </div>
+        
+        <div id="config-list"></div>
+        
+        <button onclick="addRangeRow()" style="width:100%; padding:10px; margin-top:10px; border-radius:8px; border:1px solid #ccc;">＋ 判定範囲を追加</button>
+
+        <div class="settings-footer">
+            <button class="save-btn" onclick="saveSettings()">✅ 設定をスマホに保存</button>
+            <div style="display:flex; gap:10px;">
+                <button class="sync-btn" style="flex:1;" onclick="startHost()">📡 他の端末へ送信</button>
+                <button class="sync-btn" style="flex:1; background:#007bff;" onclick="startScan()">📷 QRを読み取る</button>
+            </div>
+        </div>
+
+        <div id="qr-display-area">
+            <strong>送信待機中...</strong><br>
+            <div id="qrcode"></div>
+            <p style="font-size:12px;">子機のカメラでスキャンしてください。<br>接続されると自動で全設定が送られます。</p>
+            <button onclick="stopPeer()" style="padding:5px 10px;">中止</button>
+        </div>
+
+        <div id="scanner-container">
+            <strong>QRコードをスキャン</strong><br>
+            <video id="scanner-video" playsinline></video>
+            <canvas id="scanner-canvas" style="display:none;"></canvas>
+            <button onclick="stopScan()" style="margin-top:10px; padding:10px; background:#ff4757; color:white; border:none; border-radius:5px;">スキャン中止</button>
+        </div>
+    </div>
+
+    <script>
+        const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+        
+        let currentMode = "pre"; 
+        let currentRanges = [];
+        let imageCache = {};
+        let sounds = { "START": new Audio("./start.mp3") };
+        const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
+
+        // PeerJS関連
+        let peer = null;
+
+        // 設定のロード
+        function loadSettings() {
+            const saved = localStorage.getItem('strawberry_config_v103');
+            currentRanges = saved ? JSON.parse(saved) : [];
+            if (currentRanges.length === 0) {
+                currentRanges = [
+                    { min: 17.8, label: "2L大", audio: "2LD", image: null },
+                    { min: 13.7, label: "L大", audio: "LD", image: null }
+                ];
+            }
+            currentRanges.sort((a, b) => b.min - a.min);
+            
+            imageCache = {};
+            currentRanges.forEach(r => {
+                if (r.audio) {
+                    sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3");
+                    sounds[r.audio].load();
+                }
+                if (r.image) {
+                    const img = new Image();
+                    img.src = r.image;
+                    imageCache[r.label] = img;
+                }
+            });
+        }
+
+        window.onload = loadSettings;
+
+        // Bluetooth & 重量判定 (既存ロジック)
+        let bluetoothChar = null;
+        let currentWeight = 0, stableWeight = 0, weightHistory = [];
+
+        document.getElementById('connectBtn').onclick = async () => {
+            try {
+                sounds["START"].play();
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'はよ選果' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
+                await bluetoothChar.startNotifications();
+                document.getElementById('status').innerText = "✅ 稼働中";
+                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
+                    const val = new TextDecoder().decode(e.target.value);
+                    processWeight(parseFloat(val));
+                });
+                if ('wakeLock' in navigator) navigator.wakeLock.request('screen');
+            } catch (err) { alert(err); }
+        };
+
+        function processWeight(w) {
+            currentWeight = w;
+            document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
+            weightHistory.push(w);
+            if (weightHistory.length > 3) weightHistory.shift();
+            if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
+                if (Math.abs(stableWeight - w) > 0.5) {
+                    if (stableWeight > w) checkDifference(stableWeight, w);
+                    stableWeight = w;
+                }
+            }
+        }
+
+        function checkDifference(oldW, newW) {
+            const diff = oldW - newW;
+            if (diff < 5.0) return;
+            document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
+            const match = currentRanges.find(r => diff >= r.min);
+            if (match) {
+                showFlash(match.label, "#007bff", "#fff", match.label);
+                if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); }
+            }
+        }
+
+        function showFlash(text, color, tColor, imgKey) {
+            const overlay = document.getElementById('flash-overlay');
+            const fText = document.getElementById('flash-text');
+            const fImg = document.getElementById('flash-img');
+            fText.innerText = text;
+            fText.style.color = tColor;
+            overlay.style.backgroundColor = color;
+            if (currentMode === "direct" && imageCache[imgKey]) {
+                fImg.src = imageCache[imgKey].src;
+                fImg.style.display = 'block';
+            } else {
+                fImg.style.display = 'none';
+            }
+            overlay.style.display = 'flex';
+            if (window.flashTimer) clearTimeout(window.flashTimer);
+            window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 2000 : 3900);
+        }
+
+        document.getElementById('tareBtn').onclick = () => {
+            stableWeight = currentWeight;
+            document.getElementById('diff-display').innerText = "基準リセット";
+            if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
+        };
+
+        // 設定画面・PeerJS同期ロジック
+        function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
+        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; stopPeer(); stopScan(); }
+        document.getElementById('settingsBtn').onclick = openSettings;
+
+        function renderConfigList() {
+            const area = document.getElementById('config-list');
+            area.innerHTML = '';
+            currentRanges.forEach((r, i) => {
+                const div = document.createElement('div');
+                div.className = 'config-row';
+                div.innerHTML = `
+                    <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)">g以上:
+                    <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value">
+                    <select onchange="currentRanges[${i}].audio=this.value">
+                        ${availableAudios.map(a => `<option value="${a}" ${a===r.audio?'selected':''}>音:${a}</option>`).join('')}
+                    </select>
+                    <div style="margin-top:8px;">
+                        <label class="file-input-label">📷 写真<input type="file" style="display:none" onchange="handleImg(event, ${i})"></label>
+                        <img src="${r.image||''}" class="img-preview" id="pre-${i}" style="display:${r.image?'inline':'none'}">
+                        <button onclick="currentRanges.splice(${i},1);renderConfigList()" style="float:right; background:#ff4757; color:white; border:none; padding:5px 10px; border-radius:5px;">削除</button>
+                    </div>
+                `;
+                area.appendChild(div);
+            });
+        }
+
+        function addRangeRow() { currentRanges.push({min:10, label:"新", audio:"SS", image:null}); renderConfigList(); }
+
+        function handleImg(e, i) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                const img = new Image();
+                img.src = f.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const scale = Math.min(400 / img.width, 400 / img.height);
+                    canvas.width = img.width * scale; canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.7);
+                    currentRanges[i].image = base64;
+                    const pre = document.getElementById('pre-'+i);
+                    pre.src = base64; pre.style.display = 'inline';
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveSettings() {
+            localStorage.setItem('strawberry_config_v103', JSON.stringify(currentRanges));
+            loadSettings();
+            alert("保存しました");
+        }
+
+        // --- PeerJS 送信 (親機) ---
+        function startHost() {
+            stopPeer();
+            document.getElementById('qr-display-area').style.display = 'block';
+            peer = new Peer();
+            peer.on('open', (id) => {
+                const qrDiv = document.getElementById('qrcode');
+                qrDiv.innerHTML = '';
+                new QRCode(qrDiv, { text: "HAYO:" + id, width: 180, height: 180 });
+            });
+            peer.on('connection', (conn) => {
+                conn.on('open', () => {
+                    conn.send(JSON.stringify(currentRanges));
+                    alert("設定を送信しました！");
+                    stopPeer();
+                });
+            });
+        }
+
+        function stopPeer() {
+            if (peer) { peer.destroy(); peer = null; }
+            document.getElementById('qr-display-area').style.display = 'none';
+        }
+
+        // --- PeerJS 受信 (子機/スキャン) ---
+        let vStream = null;
+        function startScan() {
+            document.getElementById('scanner-container').style.display = 'block';
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(s => {
+                vStream = s;
+                const v = document.getElementById('scanner-video');
+                v.srcObject = s; v.play();
+                requestAnimationFrame(tick);
+            });
+        }
+
+        function stopScan() {
+            if(vStream) vStream.getTracks().forEach(t => t.stop());
+            document.getElementById('scanner-container').style.display = 'none';
+        }
+
+        function tick() {
+            const v = document.getElementById('scanner-video');
+            if (v.readyState === v.HAVE_ENOUGH_DATA) {
+                const canvas = document.getElementById('scanner-canvas');
+                canvas.height = v.videoHeight; canvas.width = v.videoWidth;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+                const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data, canvas.width, canvas.height);
+                if (code && code.data.startsWith("HAYO:")) {
+                    const peerId = code.data.split(":")[1];
+                    stopScan();
+                    connectToPeer(peerId);
+                    return;
+                }
+            }
+            if(document.getElementById('scanner-container').style.display === 'block') requestAnimationFrame(tick);
+        }
+
+        function connectToPeer(id) {
+            const p = new Peer();
+            p.on('open', () => {
+                const conn = p.connect(id);
+                conn.on('data', (data) => {
+                    localStorage.setItem('strawberry_config_v103', data);
+                    alert("設定と画像を受信しました！再読み込みします。");
+                    location.reload();
+                });
+            });
+        }
+
+        document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
+        document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
+    </script>
+</body>
+</html>
