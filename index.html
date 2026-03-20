@@ -3,76 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.23</title>
+    <title>イチゴ選別システム V1.24</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; }
-        #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
+        /* Bluefy対策：vhを過信せず、%とflexで制御 */
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
+        
+        #app-container { 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 2px; 
+            box-sizing: border-box; 
+            width: 100%; 
+        }
         
         #weight-section { text-align: center; margin: 0; padding: 0; flex-shrink: 0; }
         #app-title { font-size: 14px; font-weight: bold; color: #d63031; margin: 0; }
         #status { color: #555; font-size: 10px; margin: 0; }
-        #weight { font-size: 7vh; font-weight: bold; color: #00b300; line-height: 1; margin: 1px 0; }
+        #weight { font-size: 8vh; font-weight: bold; color: #00b300; line-height: 1; margin: 1px 0; }
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* 判定オーバーレイ */
+        /* 判定オーバーレイ：ここをBluefy用に最適化 */
         #flash-overlay { 
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-            display: none; flex-direction: column; align-items: center; 
-            z-index: 500; padding: 10px; box-sizing: border-box; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: flex-start; /* 上詰めにして下スペースを確保 */
+            z-index: 500; 
+            padding: 5px; 
+            box-sizing: border-box; 
         }
         
         #flash-text { 
-            font-size: 10vh; font-weight: bold; line-height: 1.1; color: #fff; 
-            -webkit-text-stroke: 1.5px #000; margin-bottom: 5px; flex-shrink: 0; text-align: center; 
+            font-size: 10vh; font-weight: bold; line-height: 1; color: #fff; 
+            -webkit-text-stroke: 1.5px #000; 
+            margin: 5px 0; 
+            flex-shrink: 0; 
+            text-align: center; 
         }
         
-        /* 画像コンテナ：残りの高さをすべて使う設定 */
+        /* 画像コンテナ：縦画面で絶対に「切れない」設定 */
         #flash-img-container { 
             display: grid; 
             grid-template-columns: 1fr 1fr;
             grid-template-rows: 1fr 1fr;
-            gap: 8px; 
-            width: 100%; 
-            flex: 1; /* 重要：残りのスペースをすべて埋める */
-            min-height: 0; /* 重要：中身がはみ出さないように縮小を許可 */
-            margin: 0;
-            padding: 0;
+            gap: 4px; 
+            width: 95%; 
+            flex: 1; 
+            min-height: 0; 
+            max-height: 45%; /* 画面の45%以内に強制的に押し込める */
+            margin-bottom: 20px; /* 下端のツールバー対策で少し余裕を持たせる */
         }
 
         .flash-img-item { 
             width: 100%; 
             height: 100%; 
-            object-fit: contain; /* アスペクト比を維持して枠内に収める */
-            border-radius: 8px; 
+            object-fit: contain; 
+            border-radius: 5px; 
             display: block;
             min-height: 0;
         }
 
-        /* 1枚表示モード */
         .single-image-mode #flash-img-container {
             display: flex;
-            justify-content: center;
-            align-items: center;
+            max-height: 60%; 
         }
 
-        /* 横向きスマホ対応 */
+        /* 横向き：Bluefyは横向き時にバーが消えないことがあるため、高さを80%に抑える */
         @media screen and (orientation: landscape) {
-            #flash-overlay { flex-direction: row; padding: 10px; justify-content: center; align-items: center;}
-            #flash-text { font-size: 25vh; margin: 0 20px 0 0; width: auto; max-width: 35%; }
-            #flash-img-container { height: 95vh; flex: 1; }
-            #app-container { flex-direction: row; justify-content: space-around; }
+            #flash-overlay { flex-direction: row; padding: 5px; justify-content: space-around; align-items: center;}
+            #flash-text { font-size: 22vh; margin: 0 10px 0 0; max-width: 30%; }
+            #flash-img-container { 
+                height: 80% !important; 
+                max-height: 80% !important; 
+                width: 65%; 
+                margin-bottom: 0;
+            }
+            .single-image-mode #flash-img-container { height: 85% !important; }
+            #app-container { flex-direction: row; }
             .btn-container { width: 35%; }
         }
 
-        .btn-container { width: 100%; max-width: 450px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
-        .my-button { width: 100%; height: 50px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; color: white; margin: 3px 0; cursor: pointer; }
-        #connectBtn { background-color: #28a745; box-shadow: 0 4px #1e7e34; }
-        #tareBtn { background-color: #ff8c00; box-shadow: 0 4px #d97700; }
-        .mode-btn { flex: 1; height: 38px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
+        .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
+        .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; cursor: pointer; }
+        #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
+        #tareBtn { background-color: #ff8c00; box-shadow: 0 3px #d97700; }
+        .mode-btn { flex: 1; height: 35px; border-radius: 8px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
@@ -81,7 +105,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.23</div>
+            <div id="app-title">はよ選果 V1.24</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -99,11 +123,12 @@
                 <button id="modePre" class="mode-btn active">事前選果</button>
                 <button id="modeDirect" class="mode-btn">直パック詰め</button>
             </div>
-            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 35px; font-size: 13px;">🛠 設定・共有</button>
+            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 30px; font-size: 12px;">🛠 設定・共有</button>
         </div>
     </div>
 
     <script>
+        // JSロジックはV1.23を継承（省略なしで全て保持）
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -158,7 +183,6 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // Bluetooth/重量ロジック（維持）
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
