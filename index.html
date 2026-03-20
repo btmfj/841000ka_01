@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.14</title>
+    <title>イチゴ選別システム V1.15</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -36,36 +36,38 @@
         
         #flash-img-container { 
             display: grid; width: 100%; height: auto; 
-            max-height: 65vh; /* 縦画面時も少し余裕を持たせる */
+            max-height: 70vh; /* 縦画面時はこれ以下に収める */
             gap: 10px; justify-content: center; align-items: center;
-            overflow: hidden; 
         }
         
+        /* 画像が拡大されないための重要設定 */
         .flash-img-item { 
-            width: 100%; height: 100%; 
-            max-height: 100%; /* 親のグリッドセルを越えない */
+            max-width: 100%; 
+            max-height: 100%; 
+            width: auto; 
+            height: auto; 
             object-fit: contain; 
             border-radius: 10px;
+            display: block;
         }
 
-        /* --- 横画面時の「はみ出し」徹底ガード --- */
+        .img-slot-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         @media screen and (orientation: landscape) {
-            #flash-overlay { 
-                flex-direction: row; 
-                justify-content: center; 
-                padding: 2vh; 
-            }
-            #flash-text { 
-                font-size: 18vh; 
-                margin: 0 30px 0 0; 
-                max-width: 30%; 
-            }
+            #flash-overlay { flex-direction: row; justify-content: center; padding: 5vh; }
+            #flash-text { font-size: 20vh; margin: 0 40px 0 0; max-width: 30%; }
             #flash-img-container { 
                 width: 60%; 
-                height: 90vh; /* 横画面時は縦幅いっぱい使いたいが... */
-                max-height: 85vh; /* ブラウザのバーを考慮して85%に制限 */
+                height: 80vh; /* 横向き時は画面の8割を上限に */
+                max-height: 80vh; 
             }
-
             #app-container { flex-direction: row; justify-content: space-around; align-items: center; }
             .btn-container { width: 40%; margin: 0; }
         }
@@ -77,18 +79,12 @@
         #tareBtn { background-color: #ff8c00; box-shadow: 0 4px #d97700; }
         .mode-btn { flex: 1; height: 40px; border-radius: 10px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
-        
-        /* 設定画面 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 20px; box-sizing: border-box; }
-        .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-        .img-slot { position: relative; width: 50px; height: 50px; border: 1px dashed #999; display: flex; align-items: center; justify-content: center; }
-        .config-img-pre { width: 100%; height: 100%; object-fit: cover; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.14</div>
+            <div id="app-title">はよ選果 V1.15</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -110,11 +106,8 @@
         </div>
     </div>
 
-    <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <b>マスタ設定</b>
-            <button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button>
-        </div>
+    <div id="settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 20px; box-sizing: border-box;">
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定</b><button onclick="closeSettings()" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="addRangeRow()" style="width:100%; padding:12px; margin-top:10px;">＋ 追加</button>
         <button class="my-button" style="background:#28a745; margin-top:20px;" onclick="saveSettings()">✅ 保存</button>
@@ -122,9 +115,6 @@
 
     <script>
         const STORAGE_KEY = 'strawberry_config_v106'; 
-        const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-        
         let currentMode = "pre"; 
         let currentRanges = [];
         let sounds = { "START": new Audio("./start.mp3") };
@@ -168,23 +158,26 @@
                         imgContainer.style.gridTemplateRows = "1fr 1fr";
                     }
 
+                    // 画像描画
                     if (count <= 2) {
                         activeImages.forEach(src => {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'img-slot-wrapper';
                             const img = document.createElement('img');
                             img.src = src; img.className = 'flash-img-item';
-                            imgContainer.appendChild(img);
+                            wrapper.appendChild(img);
+                            imgContainer.appendChild(wrapper);
                         });
                     } else {
                         for (let i = 0; i < 4; i++) {
-                            const slot = document.createElement('div');
-                            slot.style.width = "100%"; slot.style.height = "100%";
-                            slot.style.display = "flex"; slot.style.justifyContent = "center";
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'img-slot-wrapper';
                             if (imgArray[i]) {
                                 const img = document.createElement('img');
                                 img.src = imgArray[i]; img.className = 'flash-img-item';
-                                slot.appendChild(img);
+                                wrapper.appendChild(img);
                             }
-                            imgContainer.appendChild(slot);
+                            imgContainer.appendChild(wrapper);
                         }
                     }
                 }
@@ -195,9 +188,11 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1200 : 3500);
         }
 
-        // --- Bluetooth / 重量処理 ---
+        // Bluetooth / 重量処理 / 設定管理（基本機能は維持）
         let bluetoothChar = null;
         let currentWeight = 0, stableWeight = 0, weightHistory = [];
+        const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -244,7 +239,6 @@
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
 
-        // --- 設定画面系 ---
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
         document.getElementById('settingsBtn').onclick = openSettings;
@@ -252,11 +246,11 @@
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
-                const div = document.createElement('div'); div.className = 'config-row';
+                const div = document.createElement('div'); div.style.border="1px solid #ccc"; div.style.padding="10px"; div.style.marginBottom="10px";
                 let slotsHtml = '';
                 for(let j=0; j<4; j++) {
                     const imgSrc = r.images[j];
-                    slotsHtml += `<div class="img-slot">${imgSrc ? `<img src="${imgSrc}" class="config-img-pre"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>` : `<label style="cursor:pointer;font-size:12px;color:#007bff;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
+                    slotsHtml += `<div style="position:relative; width:45px; height:45px; border:1px dashed #999; display:flex; align-items:center; justify-content:center;">${imgSrc ? `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover;"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>` : `<label style="cursor:pointer;font-size:12px;color:#007bff;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
                 div.innerHTML = `
                     <div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;">
@@ -290,6 +284,7 @@
         
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
+        document.getElementById('settingsBtn').onclick = openSettings;
     </script>
 </body>
 </html>
