@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.10</title>
+    <title>イチゴ選別システム V1.11</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -32,22 +32,17 @@
             display: grid; width: 100%; flex-grow: 1; 
             gap: 10px; justify-content: center; align-items: center;
             overflow: hidden; padding: 5px; box-sizing: border-box;
+            /* 常に2x2のグリッドを維持 */
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
         }
         
         .flash-img-item { 
             width: 100%; height: 100%; 
-            max-width: 100%; max-height: 100%;
             object-fit: contain; 
             border-radius: 10px;
-            /* 影を削除 */
             box-shadow: none; 
             background: transparent;
-        }
-
-        /* 縦画面時の3枚・4枚用レイアウトを2x2に固定 */
-        .grid-3-4 { 
-            grid-template-columns: 1fr 1fr !important;
-            grid-template-rows: 1fr 1fr !important; 
         }
 
         @media screen and (orientation: landscape) {
@@ -68,13 +63,14 @@
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; overflow-y: auto; padding: 15px; box-sizing: border-box; }
         .config-row { border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; border-radius: 8px; }
-        .config-img-pre { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+        .config-img-pre { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; background: #eee; }
+        .img-slot { position: relative; width: 40px; height: 40px; border: 1px dashed #999; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <video id="wake-lock-video" playsinline loop muted style="display:none;"></video>
-        <div id="app-title">はよ選果 V1.10</div>
+        <div id="app-title">はよ選果 V1.11</div>
         <div id="status">Bluetooth未接続</div>
         <div id="weight">0.0<span>g</span></div>
         <div id="diff-display">--.- g 減</div>
@@ -122,7 +118,6 @@
     </div>
 
     <script>
-        // JS部分はshowFlashのロジックのみ微調整
         const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -135,8 +130,12 @@
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", images: [] }];
-            currentRanges.forEach(r => { if(!r.images) r.images = []; });
+            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", images: [null, null, null, null] }];
+            // 各Rangeのimages配列を4要素に固定（null埋め）
+            currentRanges.forEach(r => {
+                if(!r.images) r.images = [null, null, null, null];
+                while(r.images.length < 4) r.images.push(null);
+            });
             currentRanges.sort((a, b) => b.min - a.min);
             currentRanges.forEach(r => { if(r.audio && !sounds[r.audio]) sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3"); });
         }
@@ -184,7 +183,7 @@
             }
         }
 
-        /* --- V1.10 表示ロジック修正 --- */
+        /* --- V1.11 空白選択対応表示ロジック --- */
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fText = document.getElementById('flash-text');
@@ -193,30 +192,25 @@
             fText.innerText = text;
             overlay.style.backgroundColor = color;
             imgContainer.innerHTML = '';
-            imgContainer.className = ''; 
             imgContainer.style.display = 'none';
 
-            if (currentMode === "direct" && imgArray.length > 0) {
-                const count = Math.min(imgArray.length, 4);
+            // 直パック詰めモードかつ画像（または空枠設定）がある場合
+            if (currentMode === "direct") {
                 imgContainer.style.display = 'grid';
-                
-                if (count === 1) { 
-                    imgContainer.style.gridTemplateColumns = "1fr"; 
-                    imgContainer.style.gridTemplateRows = "1fr";
-                } else if (count === 2) { 
-                    imgContainer.style.gridTemplateColumns = "1fr 1fr"; 
-                    imgContainer.style.gridTemplateRows = "1fr";
-                } else {
-                    // 3枚 or 4枚の時は 2x2 に統一（はみ出し防止）
-                    imgContainer.className = 'grid-3-4';
+                // 4つのスロット分ループして要素を作成（画像がなければ透明なdiv）
+                for (let i = 0; i < 4; i++) {
+                    const slot = document.createElement('div');
+                    slot.style.width = "100%";
+                    slot.style.height = "100%";
+                    
+                    if (imgArray[i]) {
+                        const img = document.createElement('img');
+                        img.src = imgArray[i];
+                        img.className = 'flash-img-item';
+                        slot.appendChild(img);
+                    }
+                    imgContainer.appendChild(slot);
                 }
-
-                imgArray.slice(0, 4).forEach((src) => {
-                    const img = document.createElement('img');
-                    img.src = src;
-                    img.className = 'flash-img-item';
-                    imgContainer.appendChild(img);
-                });
             }
 
             overlay.style.display = 'flex';
@@ -224,27 +218,39 @@
             window.flashTimer = setTimeout(() => overlay.style.display = 'none', currentMode === "pre" ? 1500 : 4000);
         }
 
-        // 以下、設定・通信系関数（変更なし）
         document.getElementById('tareBtn').onclick = () => {
             stableWeight = currentWeight;
             document.getElementById('diff-display').innerText = "リセット";
             if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1'));
         };
+
         function openSettings() { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; stopPeer(); stopScan(); }
         document.getElementById('settingsBtn').onclick = openSettings;
+
         function renderConfigList() {
             const area = document.getElementById('config-list');
             area.innerHTML = '';
             currentRanges.forEach((r, i) => {
                 const div = document.createElement('div');
                 div.className = 'config-row';
-                let imgsHtml = (r.images||[]).map((img, j) => `
-                    <div style="position:relative;">
-                        <img src="${img}" class="config-img-pre">
-                        <button onclick="currentRanges[${i}].images.splice(${j},1);renderConfigList()" style="position:absolute;top:0;right:0;background:red;color:white;border:none;border-radius:50%;width:15px;height:15px;font-size:10px;">×</button>
-                    </div>
-                `).join('');
+
+                // 4つの固定スロットを生成
+                let slotsHtml = '';
+                for(let j=0; j<4; j++) {
+                    const imgSrc = r.images[j];
+                    slotsHtml += `
+                        <div class="img-slot">
+                            ${imgSrc ? `
+                                <img src="${imgSrc}" class="config-img-pre">
+                                <button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:15px;height:15px;font-size:10px;">×</button>
+                            ` : `
+                                <label style="cursor:pointer;font-size:10px;color:#007bff;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>
+                            `}
+                        </div>
+                    `;
+                }
+
                 div.innerHTML = `
                     <div style="display:flex; gap:5px; align-items:center;">
                         <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:45px;">g〜
@@ -252,16 +258,17 @@
                         <select onchange="currentRanges[${i}].audio=this.value" style="font-size:11px;">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
                         <button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto;">削</button>
                     </div>
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:5px;">
-                        ${imgsHtml}
-                        ${(r.images||[]).length < 4 ? `<label style="background:#007bff;color:white;padding:5px;font-size:11px;border-radius:4px;">＋追加<input type="file" style="display:none" onchange="addImg(event,${i})"></label>` : ''}
+                    <div style="display:flex; gap:10px; margin-top:5px;">
+                        ${slotsHtml}
                     </div>
                 `;
                 area.appendChild(div);
             });
         }
-        function addRangeRow() { currentRanges.push({min:10, label:"新", audio:"SS", images:[]}); renderConfigList(); }
-        function addImg(e, i) {
+
+        function addRangeRow() { currentRanges.push({min:10, label:"新", audio:"SS", images:[null,null,null,null]}); renderConfigList(); }
+        
+        function addImg(e, i, slotIndex) {
             const file = e.target.files[0];
             if(!file) return;
             const reader = new FileReader();
@@ -274,13 +281,15 @@
                     const scale = Math.min(300 / img.width, 300 / img.height);
                     canvas.width = img.width * scale; canvas.height = img.height * scale;
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    currentRanges[i].images.push(canvas.toDataURL('image/jpeg', 0.6));
+                    currentRanges[i].images[slotIndex] = canvas.toDataURL('image/jpeg', 0.6);
                     renderConfigList();
                 };
             };
             reader.readAsDataURL(file);
         }
+
         function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); loadSettings(); alert("完了"); }
+        // ...（以下、startHostなどの通信関数は変更なし）...
         function startHost() {
             stopPeer(); document.getElementById('qr-display-area').style.display='block';
             peer = new Peer();
