@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.49</title>
+    <title>イチゴ選別システム V1.50</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -45,7 +45,6 @@
             .btn-container { width: 35%; }
         }
 
-        /* UIパーツ */
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
@@ -53,20 +52,18 @@
         .mode-btn { flex: 1; height: 35px; border-radius: 8px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
         .mode-btn.active { background: #d63031; color: #fff; }
         
-        /* 設定・共有UI */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
         .share-card { background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 15px; margin-top: 20px; text-align: center; }
         #qrcode-area { margin: 10px auto; display: none; justify-content: center; flex-direction: column; align-items: center; gap: 5px; }
         #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border-radius: 10px; border: 3px solid #007bff; }
         .action-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold; margin: 5px 0; color: white; }
-        #peer-status-text { font-size: 10px; color: #dc3545; margin-bottom: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.49</div>
+            <div id="app-title">はよ選果 V1.50</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -98,7 +95,7 @@
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         let currentMode = "pre", currentRanges = [], sounds = {};
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
-        let peer = null, scanning = false, myPeerId = null;
+        let peer = null, myPeerId = null, scanning = false;
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -137,16 +134,16 @@
                 bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
                 await bluetoothChar.startNotifications();
                 document.getElementById('status').innerText = "✅ 稼働中";
-                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => processWeight(parseFloat(new TextDecoder().decode(e.target.value))));
+                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
+                    const w = parseFloat(new TextDecoder().decode(e.target.value));
+                    currentWeight = w; document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
+                    weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
+                    if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
+                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) checkDifference(stableWeight, w); stableWeight = w; }
+                    }
+                });
             } catch (err) { alert(err); }
         };
-        function processWeight(w) {
-            currentWeight = w; document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
-            weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
-            if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
-                if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) checkDifference(stableWeight, w); stableWeight = w; }
-            }
-        }
         function checkDifference(oldW, newW) {
             const diff = oldW - newW; if (diff < 5.0) return;
             document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
@@ -155,53 +152,21 @@
         }
         document.getElementById('tareBtn').onclick = () => { stableWeight = currentWeight; document.getElementById('diff-display').innerText = "リセット"; if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
 
-        /* --- 設定共有ロジック V1.49 (Wi-Fi対応強化) --- */
+        /* --- 設定共有（極限シンプル版） --- */
         function initPeer() {
-            if (peer) { peer.destroy(); peer = null; }
-            const statusLabel = document.getElementById('peer-status-text');
-            if(statusLabel) statusLabel.innerText = "通信サーバーに接続中...";
-
-            // GoogleのSTUNサーバーを追加してWi-Fiの壁を越えやすくする
-            peer = new Peer({
-                config: {
-                    'iceServers': [
-                        { url: 'stun:stun.l.google.com:19302' },
-                        { url: 'stun:stun1.l.google.com:19302' },
-                        { url: 'stun:stun2.l.google.com:19302' }
-                    ]
-                }
-            });
-
-            peer.on('open', (id) => { 
-                myPeerId = id; 
-                if(statusLabel) {
-                    statusLabel.innerText = "● 接続完了 (送信・受信OK)";
-                    statusLabel.style.color = "#28a745";
-                }
-            });
+            if(peer) peer.destroy();
+            peer = new Peer({ config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]} });
+            peer.on('open', (id) => { myPeerId = id; });
             peer.on('connection', (c) => {
                 c.on('data', (data) => {
-                    if (confirm("設定データを受信しました。マスタを更新しますか？")) {
-                        currentRanges = data; saveSettings(); renderConfigList();
-                    }
+                    if (confirm("設定を受信しました。上書きしますか？")) { currentRanges = data; saveSettings(); renderConfigList(); }
                 });
             });
-            peer.on('error', (err) => {
-                console.error(err);
-                if(statusLabel) {
-                    statusLabel.innerText = "× 接続エラー。再試行します...";
-                    statusLabel.style.color = "#dc3545";
-                }
-                myPeerId = null;
-                setTimeout(initPeer, 5000); 
-            });
+            peer.on('error', () => { myPeerId = null; setTimeout(initPeer, 5000); });
         }
 
         function createMyQR() {
-            if(!myPeerId) {
-                alert("接続準備ができていません。再接続を試みます。");
-                initPeer(); return;
-            }
+            if(!myPeerId) { initPeer(); return alert("通信サーバーへ接続中... もう一度押してください"); }
             const qrDiv = document.getElementById('qrcode');
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, { text: myPeerId, width: 180, height: 180 });
@@ -216,29 +181,26 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
                 canvas.style.display = "block"; scanning = true;
-                
                 const tick = () => {
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
                         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-                        if (code) { stopScan(stream); sendSettingsTo(code.data); return; }
+                        if (code) { 
+                            scanning = false; stream.getTracks().forEach(t => t.stop()); 
+                            canvas.style.display = "none";
+                            const c = peer.connect(code.data);
+                            c.on('open', () => { c.send(currentRanges); alert("送信完了！"); });
+                            return; 
+                        }
                     }
                     if (scanning) requestAnimationFrame(tick);
                 };
                 requestAnimationFrame(tick);
-            } catch (err) { alert("カメラ起動エラー: " + err); }
-        }
-        function stopScan(s) { scanning = false; s.getTracks().forEach(t => t.stop()); document.getElementById("v-canvas").style.display = "none"; }
-        
-        function sendSettingsTo(targetId) {
-            if (!peer || peer.destroyed) { alert("通信が切れています。再読み込みしてください。"); return; }
-            const c = peer.connect(targetId);
-            c.on('open', () => { c.send(currentRanges); alert("送信に成功しました！"); });
-            c.on('error', (err) => { alert("送信失敗。相手がQR表示中か確認してください。"); });
+            } catch (err) { alert("カメラ起動エラー"); }
         }
 
-        /* 設定リスト・保存 */
+        /* 共通関数 */
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
@@ -273,26 +235,17 @@
 
     <div id="settings-modal" class="modal">
         <div style="display:flex; justify-content:space-between; align-items:center;"><b>マスタ設定・共有</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
-        
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:12px; margin-top:10px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:10px;" onclick="saveSettings()">✅ 設定を本体に保存</button>
 
         <div class="share-card">
-            <h3 style="font-size:15px; margin:0 0 5px 0; color:#333;">📡 設定データを送る・受け取る</h3>
-            <div id="peer-status-text">通信準備中...</div>
-            
-            <button class="action-btn" style="background:#dc3545;" onclick="createMyQR()">1. 自分のQRコードを表示</button>
-            <div id="qrcode-area">
-                <div id="qrcode"></div>
-                <p style="font-size:10px; color:#999; margin:0;">※相手にこのQRを読み取ってもらってください</p>
-            </div>
-
+            <h3 style="font-size:15px; margin:0 0 10px 0;">📡 設定を共有する</h3>
+            <button class="action-btn" style="background:#dc3545;" onclick="createMyQR()">1. 自分のQRを表示</button>
+            <div id="qrcode-area"><div id="qrcode"></div></div>
             <div style="margin:15px 0; border-top:1px solid #dee2e6;"></div>
-
             <button class="action-btn" style="background:#007bff;" onclick="startQRScan()">2. 相手のQRを読み取る</button>
             <canvas id="v-canvas"></canvas>
-            <p style="font-size:11px; color:#666; margin-top:5px;">※読み取ると自動で設定が送信されます</p>
         </div>
     </div>
 </body>
