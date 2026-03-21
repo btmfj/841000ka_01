@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.12</title>
+    <title>イチゴ選別システム V2.13</title>
     <style>
+        /* メイン画面のスタイル（前バージョンを継承） */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
-        
-        /* メイン画面：視認性重視 */
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
         #app-title { font-size: 28px; font-weight: bold; color: #d63031; margin-bottom: 5px; }
         #status { color: #555; font-size: 14px; margin-bottom: 5px; }
@@ -31,7 +30,7 @@
         .grid-item.bl { justify-content: flex-end; align-items: flex-start; }
         .grid-item.br { justify-content: flex-start; align-items: flex-start; }
 
-        /* メイン画面ボタン */
+        /* ボタン */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
         #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
@@ -41,30 +40,32 @@
         .mode-btn.active { background: #d63031; color: #fff; }
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
 
-        /* --- 設定画面（モーダル）のスタイル強化 --- */
+        /* --- 設定画面の改善 --- */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 15px; box-sizing: border-box; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .modal-title { font-size: 26px; font-weight: bold; }
         .close-btn { font-size: 35px; border: none; background: none; color: #666; cursor: pointer; padding: 0 10px; }
         
-        /* 判定範囲の各行 */
         .config-row { border: 2px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: #fafafa; }
-        .config-inputs { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-        .config-inputs input, .config-inputs select { height: 45px; font-size: 18px; font-weight: bold; border: 1px solid #999; border-radius: 8px; padding: 0 5px; }
-        .config-inputs input[type="number"] { width: 65px; }
-        .config-inputs input[type="text"] { width: 80px; }
-        .config-inputs select { min-width: 60px; }
         
-        /* 画像スロット */
+        /* ガイド付き入力セクション */
+        .input-group { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+        .guide-label { font-size: 15px; font-weight: bold; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; }
+        
+        .config-inputs input, .config-inputs select { height: 45px; font-size: 18px; font-weight: bold; border: 1px solid #999; border-radius: 8px; padding: 0 5px; }
+        .config-inputs input[type="number"] { width: 70px; }
+        .config-inputs input[type="text"] { width: 90px; }
+        .config-inputs select { min-width: 70px; }
+        
+        .image-section { margin-top: 10px; }
         .image-slots { display: flex; gap: 12px; justify-content: flex-start; margin-top: 5px; }
-        .slot { position: relative; width: 65px; height: 65px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; overflow: visible; }
+        .slot { position: relative; width: 65px; height: 65px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; }
         .slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
         .slot label { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 24px; color: #007bff; cursor: pointer; }
         .slot-del { position: absolute; top: -8px; right: -8px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 
-        .del-row-btn { background: #ff4757; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 16px; margin-left: auto; }
+        .del-row-btn { background: #ff4757; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 10px; width: 100%; }
 
-        /* 同期セクション */
         .share-card { background: #f0fdf4; border: 3px solid #10b981; border-radius: 20px; padding: 20px; margin-top: 30px; text-align: center; }
         .share-card h3 { font-size: 22px; margin-top: 0; color: #065f46; }
         .sync-button { height: 55px; font-size: 18px; margin: 8px 0; }
@@ -79,7 +80,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.12</div>
+            <div id="app-title">はよ選果 V2.13</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -109,7 +110,7 @@
         
         <div id="config-list"></div>
         
-        <button onclick="addRangeRow()" style="width:100%; padding:15px; margin-top:10px; border-radius:12px; font-size:20px; font-weight:bold; background:#e0e0e0; border:none;">＋ 判定範囲を追加</button>
+        <button onclick="addRangeRow()" style="width:100%; padding:15px; margin-top:10px; border-radius:12px; font-size:20px; font-weight:bold; background:#e0e0e0; border:none; cursor:pointer;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:15px;" onclick="saveConfig()">✅ 本体に保存</button>
         
         <div class="share-card">
@@ -150,15 +151,8 @@
         }
         window.onload = loadSettings;
 
-        function saveConfig() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges));
-            alert('本体に保存しました');
-        }
-
-        function addRangeRow() {
-            currentRanges.push({min:0,label:'新規格',audio:'3',colorName:'黒',images:[null,null,null,null]});
-            renderConfigList();
-        }
+        function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました'); }
+        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
 
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
@@ -197,8 +191,7 @@
                 const res = await fetch(`${GAS_URL}?id=${syncId}`);
                 const data = await res.json();
                 if (data && data.length > 0 && confirm("設定を上書きしますか？")) {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-                    location.reload();
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
                 }
             } catch (err) { alert("取得失敗"); }
         }
@@ -295,22 +288,22 @@
                 let slots = '';
                 for(let j=0; j<4; j++){
                     const img = r.images[j];
-                    slots += `
-                        <div class="slot">
-                            ${img?`<img src="${img}"><button class="slot-del" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}
-                        </div>`;
+                    slots += `<div class="slot">${img?`<img src="${img}"><button class="slot-del" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
                 const colorOptions = Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('');
                 
                 div.innerHTML = `
                     <div class="config-inputs">
-                        <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)">g〜 
-                        <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value">
-                        <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
-                        <select onchange="currentRanges[${i}].colorName=this.value">${colorOptions}</select>
-                        <button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">削除</button>
+                        <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
+                        <div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value"></div>
+                        <div class="input-group"><span class="guide-label">音声：</span><select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select></div>
+                        <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${colorOptions}</select></div>
                     </div>
-                    <div class="image-slots">${slots}</div>`;
+                    <div class="image-section">
+                        <span class="guide-label">画像：</span>
+                        <div class="image-slots">${slots}</div>
+                    </div>
+                    <button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">判定（${r.label}）を削除する</button>`;
                 area.appendChild(div);
             });
         }
