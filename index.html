@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.03</title>
+    <title>イチゴ選別システム V2.04</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -16,15 +16,19 @@
         
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
-        /* 文字エリア：画像を大きく見せるため控えめに設定（20%） */
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 20%; flex-shrink: 0; }
-        /* 画像エリア：画面の大部分（80%）を使用 */
         #flash-img-cell { width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; overflow: hidden; }
         #flash-text { font-size: 12vh; font-weight: bold; color: #fff; -webkit-text-stroke: 1.5px #000; margin: 0; }
         #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 2px; flex-wrap: wrap; }
         
-        /* 画像のスタイル：枠線（border）を完全に削除 */
-        .flash-img-item { object-fit: contain; border-radius: 0; border: none; box-sizing: border-box; }
+        /* 画像：枠線なし ＋ iPad等の大画面でもクッキリ表示する設定 */
+        .flash-img-item { 
+            object-fit: contain; 
+            border: none; 
+            box-sizing: border-box; 
+            image-rendering: -webkit-optimize-contrast; /* Safari/iOS向け鮮明化 */
+            image-rendering: auto; 
+        }
 
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; cursor: pointer; }
@@ -45,7 +49,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.03</div>
+            <div id="app-title">はよ選果 V2.04</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -75,7 +79,6 @@
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         
-        // --- あなたの最新のGAS URLをここに貼り付けてください ---
         const GAS_URL = "https://script.google.com/macros/s/AKfycbz9MbewMWAiRx2pSsu7usoloHm1guK32Woe_9XNNU_r6nTm8VlNFcOQ4h3VTnQFh5g/exec";
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
@@ -148,7 +151,6 @@
             }
         }
 
-        // --- 判定フラッシュ表示ロジック (V2.03 画像最大化・枠線削除版) ---
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay'), 
                   fText = document.getElementById('flash-text'), 
@@ -166,7 +168,6 @@
                     img.src = src;
                     img.className = 'flash-img-item';
 
-                    // 枚数に応じてサイズを自動調整（枠線はCSSで削除済み）
                     if (activeImages.length === 1) {
                         img.style.width = '100%'; 
                         img.style.height = '100%';
@@ -226,17 +227,20 @@
             });
         }
         
+        // --- 修正箇所：画像圧縮を最小限（iPadのRetinaディスプレイでも耐えられるサイズ）に変更 ---
         function addImg(e, i, sIdx) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader(); reader.onload = (f) => {
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
-                    const maxSide = 300; // 解像度を上げて綺麗に
-                    const sc = Math.min(maxSide / img.width, maxSide / img.height);
+                    // iPad等の大画面に耐えるため、長辺を1024px程度に設定（以前は300px）
+                    const maxSide = 1024; 
+                    const sc = Math.min(maxSide / img.width, maxSide / img.height, 1.0); // 元画像より大きくはしない
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.7); 
+                    // 品質0.8で保存（バランス重視）
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.8); 
                     renderConfigList();
                 };
             }; reader.readAsDataURL(file);
@@ -244,7 +248,7 @@
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.03</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.04</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
