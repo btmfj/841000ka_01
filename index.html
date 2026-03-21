@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.06</title>
+    <title>イチゴ選別システム V3.10</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -28,8 +28,8 @@
         .grid-item.bl { justify-content: flex-end; align-items: flex-start; }
         .grid-item.br { justify-content: flex-start; align-items: flex-start; }
 
-        /* スリープ防止用の隠し要素 */
-        #keep-alive-pixel { position: absolute; top: 0; left: 0; width: 1px; height: 1px; background: rgba(0,0,0,0.01); z-index: 1000; }
+        /* スリープ阻止用隠し要素 */
+        #keep-alive-pixel { position: absolute; top: 0; left: 0; width: 1px; height: 1px; background: rgba(0,0,0,0.01); z-index: 1000; pointer-events: none; }
 
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
@@ -74,7 +74,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.06</div>
+            <div id="app-title">はよ選果 V3.10</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -132,34 +132,33 @@
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
         const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
 
-        // === スリープ防止ロジック V3.06 (iPhone 7 最強版) ===
+        // === スリープ防止全部入りロジック V3.10 ===
         let wakeLock = null;
         let pixelTimer = null;
         let audioTimer = null;
+        let locTimer = null;
         const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
 
         async function activateNoSleep() {
-            // 1. Wake Lock API (Modern iOS)
+            // 1. Wake Lock API (iOS 16.4+)
             if ('wakeLock' in navigator) {
                 try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
             }
-
-            // 2. Pixel Animation Hack (OSのアイドル判定を回避)
+            // 2. 1pxアニメーション (OSへの「描画中」アピール)
             const pixel = document.getElementById('keep-alive-pixel');
             if (pixelTimer) cancelAnimationFrame(pixelTimer);
             function animatePixel() {
-                pixel.style.left = (Math.random() * 10) + "px";
+                pixel.style.top = (Math.random() * 2) + "px";
                 pixelTimer = requestAnimationFrame(animatePixel);
             }
             animatePixel();
-
-            // 3. Audio Session Keep-Alive (20秒ごとに無音再生)
+            // 3. 無音定期再生 (オーディオセッション維持)
             if (audioTimer) clearInterval(audioTimer);
-            audioTimer = setInterval(() => {
-                silentAudio.play().catch(e => {});
-            }, 20000);
-
-            // 4. Video Loop
+            audioTimer = setInterval(() => { silentAudio.play().catch(e => {}); }, 15000);
+            // 4. 位置情報リクエスト (旧iOSへの「活動中」アピール)
+            if (locTimer) clearInterval(locTimer);
+            locTimer = setInterval(() => { navigator.geolocation.getCurrentPosition(()=>{},()=>{},{enableHighAccuracy:false}); }, 45000);
+            // 5. 無音ビデオ再生
             const video = document.getElementById('no-sleep-video');
             if (video.src === "") {
                 video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC43Ni4xMDA=";
@@ -167,11 +166,9 @@
             video.play().catch(e => {});
         }
 
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') activateNoSleep();
-        });
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') activateNoSleep(); });
 
-        // === 既存機能（V3.01〜） ===
+        // === イチゴ選別基本ロジック ===
         let voices = [];
         function loadVoices() { voices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja')); }
         window.speechSynthesis.onvoiceschanged = loadVoices;
@@ -277,11 +274,8 @@
             const match = currentRanges.find(r => diff >= r.min);
             if (match) { 
                 showFlash(match.label, match.colorName || "黒", match.images || []); 
-                if (match.audioMode === "tts") {
-                    speak(match.ttsText || match.label, match.ttsVoice);
-                } else {
-                    if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); } 
-                }
+                if (match.audioMode === "tts") { speak(match.ttsText || match.label, match.ttsVoice); } 
+                else { if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); } }
             }
         }
 
@@ -319,7 +313,6 @@
         let bluetoothChar = null, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             await activateNoSleep();
-            
             try {
                 const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
                 const server = await device.gatt.connect();
@@ -354,7 +347,6 @@
                     slots += `<div class="slot">${img?`<img src="${img}"><button class="slot-del" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
                 const colorOptions = Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('');
-                
                 div.innerHTML = `
                     <div class="config-inputs">
                         <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
@@ -367,10 +359,7 @@
                             </select>
                             ${(r.audioMode === "tts") ? `
                                 <input type="text" value="${r.ttsText || ''}" placeholder="読上文" style="width:70px;" onchange="currentRanges[${i}].ttsText=this.value">
-                                <select onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;">
-                                    <option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option>
-                                    <option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option>
-                                </select>
+                                <select onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
                                 <button onclick="speak('${r.ttsText || r.label}', '${r.ttsVoice || 'female'}')" style="height:45px; width:45px; border-radius:8px; border:1px solid #999; cursor:pointer;">▶</button>
                             ` : `
                                 <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
@@ -389,7 +378,7 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
-                    const maxSide = 1024; const sc = Math.min(maxSide / img.width, maxSide / img.height, 1.0);
+                    const sc = Math.min(1024 / img.width, 1024 / img.height, 1.0);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
                     currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.8); renderConfigList();
