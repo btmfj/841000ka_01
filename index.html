@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.17</title>
+    <title>イチゴ選別システム V3.18</title>
     <style>
-        /* スタイルはV3.16を完全継承 */
+        /* スタイルはV3.17を完全継承 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -67,6 +67,7 @@
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; margin: 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .play-preview-btn { height: 45px; width: 45px; border-radius: 8px; border: 1px solid #999; cursor: pointer; background: #f8f9fa; font-size: 18px; }
+        .speed-val { font-size: 14px; font-weight: bold; color: #333; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -75,7 +76,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.17</div>
+            <div id="app-title">はよ選果 V3.18</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -146,10 +147,9 @@
             });
         }
 
-        // ファイル名を生成する共通関数（小文字化・URLエンコード処理）
         function getFileName(audioName) {
             if (!audioName) return "";
-            const clean = toHalfWidth(audioName).toLowerCase(); // 全て小文字にして探す
+            const clean = toHalfWidth(audioName).toLowerCase();
             return encodeURIComponent(clean) + ".mp3";
         }
 
@@ -182,9 +182,10 @@
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2L", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", colorName: "青", images: [null, null, null, null] }];
+            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2L", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", ttsRate: 1.0, colorName: "青", images: [null, null, null, null] }];
             currentRanges = currentRanges.map(r => {
                 if(r.audio) r.audio = toHalfWidth(r.audio);
+                if(r.ttsRate === undefined) r.ttsRate = 1.0; // 既存データに速度設定がない場合は1.0
                 return r;
             });
             currentRanges.sort((a, b) => b.min - a.min);
@@ -209,16 +210,15 @@
             const file = getFileName(audioName);
             const preview = new Audio("./" + file);
             preview.play().catch(e => {
-                console.error("Playback failed for:", file);
-                alert("再生エラー: 「" + file + "」が見つかりません。GitHub上のファイル名（小文字）を確認してください。");
+                alert("再生エラー: 「" + file + "」が見つかりません。");
             });
         }
 
-        function speak(text, gender) {
+        function speak(text, gender, rate = 1.0) {
             if (!text) return;
             window.speechSynthesis.cancel();
             const uttr = new SpeechSynthesisUtterance(text);
-            uttr.rate = 1.2;
+            uttr.rate = rate; // 速度を適用
             if (voices.length > 0) {
                 const target = gender === "male" ? ["Male", "Otoya", "Ichiro"] : ["Female", "Kyoko", "Hanako"];
                 uttr.voice = voices.find(v => target.some(n => v.name.includes(n))) || voices[0];
@@ -227,7 +227,7 @@
         }
 
         function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('本体に保存しました'); }
-        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
+        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',ttsRate:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
 
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
@@ -296,7 +296,9 @@
             const match = currentRanges.find(r => diff >= r.min);
             if (match) { 
                 showFlash(match.label, match.colorName || "黒", match.images || []); 
-                if (match.audioMode === "tts") { speak(match.ttsText || match.label, match.ttsVoice); } 
+                if (match.audioMode === "tts") { 
+                    speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0); 
+                } 
                 else { 
                     const cleanKey = toHalfWidth(match.audio);
                     if (sounds[cleanKey]) { sounds[cleanKey].currentTime = 0; sounds[cleanKey].play(); } 
@@ -385,7 +387,12 @@
                             ${(r.audioMode === "tts") ? `
                                 <input type="text" id="ttsText-${i}" value="${r.ttsText || ''}" placeholder="読上文" style="width:70px;" oninput="currentRanges[${i}].ttsText=this.value">
                                 <select id="ttsVoice-${i}" onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
-                                <button class="play-preview-btn" onclick="speak(document.getElementById('ttsText-${i}').value || currentRanges[${i}].label, document.getElementById('ttsVoice-${i}').value)">▶</button>
+                                <button class="play-preview-btn" onclick="speak(document.getElementById('ttsText-${i}').value || currentRanges[${i}].label, document.getElementById('ttsVoice-${i}').value, currentRanges[${i}].ttsRate)">▶</button>
+                                <div class="input-group" style="width:100%; margin-top:5px;">
+                                    <span class="guide-label">速度：</span>
+                                    <input type="range" min="0.5" max="2.0" step="0.1" value="${r.ttsRate || 1.0}" oninput="currentRanges[${i}].ttsRate=parseFloat(this.value); this.nextElementSibling.innerText=this.value+'倍速'">
+                                    <span class="speed-val">${r.ttsRate || 1.0}倍速</span>
+                                </div>
                             ` : `
                                 <select id="audioSel-${i}" onchange="currentRanges[${i}].audio=this.value">
                                     ${availableAudios.map(a=>`<option value="${a}" ${toHalfWidth(a)==toHalfWidth(r.audio)?'selected':''}>${a.toUpperCase()}</option>`).join('')}
