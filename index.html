@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.98</title>
+    <title>イチゴ選別システム V1.99</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -14,7 +14,6 @@
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* フラッシュ表示用 */
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 25%; }
@@ -42,7 +41,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.98</div>
+            <div id="app-title">はよ選果 V1.99</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -72,7 +71,8 @@
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzCtloJm6DkHC_5QSqxHoAys3AdqdeIAP5SSRtNfanaST2uX9lDkrg1x3WWbXgLuja_/exec";
+        // 【重要】新しいGAS URLをここに貼り付けてください
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwni4nzUKre400Dkr_R8FBiVR2nR0CGDCrLqjLIfb9rzFS2i_RfKvRlmN6gDoQr0gaL/exec";
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
@@ -85,32 +85,25 @@
         }
         window.onload = loadSettings;
 
-        // --- 同期ロジック (V1.98 究極安定版) ---
+        // --- 同期ロジック (V1.99 大容量対応版) ---
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "クラウドへ送信中..."; qrDiv.innerHTML = '';
-
-            // IDを先に生成
             const syncId = 'STRW-' + Math.random().toString(36).substring(2, 10);
-
             try {
-                // 返信を待たない「投げっぱなし」送信 (no-cors)
-                fetch(GAS_URL + "?id=" + syncId, {
+                // ドライブ保存版。fetchの完了を待ってからQRを出すように調整
+                await fetch(GAS_URL + "?id=" + syncId, {
                     method: "POST",
                     mode: "no-cors",
                     headers: { "Content-Type": "text/plain" },
                     body: JSON.stringify(currentRanges)
                 });
-
-                // 1.5秒待って強制的にQR表示
-                setTimeout(() => {
-                    loader.style.display = 'none';
-                    qrDiv.innerHTML = '';
-                    new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
-                    msg.style.color = "#22c55e";
-                    msg.innerText = "✅ クラウド送信完了！(数秒待って読み取ってください)";
-                }, 1500);
-
+                
+                loader.style.display = 'none';
+                qrDiv.innerHTML = '';
+                new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
+                msg.style.color = "#22c55e";
+                msg.innerText = "✅ 送信完了！(ドライブ保存完了)";
             } catch (err) {
                 loader.style.display = 'none';
                 msg.innerText = "❌ エラー: " + err;
@@ -133,8 +126,8 @@
                             fetch(`${GAS_URL}?id=${code.data}`).then(res => res.json()).then(data => {
                                 if (data && data.length > 0 && confirm("画像を含む設定を同期しますか？")) {
                                     localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
-                                } else { alert("データがまだ届いていません。3秒待って再スキャンしてください。"); }
-                            }).catch(() => alert("読込失敗"));
+                                } else { alert("データがまだ準備できていません。数秒待って再試行してください。"); }
+                            }).catch(() => alert("読込失敗（GAS側でファイル生成中の可能性があります）"));
                             return; 
                         }
                     }
@@ -144,7 +137,7 @@
             } catch (err) { alert("カメラ起動失敗"); }
         }
 
-        /* 以下、判定ロジック・設定UI等はV1.97を継承（正常動作確認済み） */
+        // --- 判定ロジック ---
         function checkDifference(oldW, newW) {
             const diff = oldW - newW; if (diff < 5.0) return;
             document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
@@ -168,6 +161,8 @@
             if (window.flashTimer) clearTimeout(window.flashTimer);
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('is-active'); }, currentMode === "pre" ? 1200 : 3500);
         }
+
+        // --- Bluetooth制御 ---
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -187,10 +182,13 @@
                 });
             } catch (err) { alert("秤が見つかりません"); }
         };
+
+        // --- 設定画面UI制御 ---
         document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
         document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
+        
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
@@ -204,28 +202,32 @@
                 area.appendChild(div);
             });
         }
+        
         function addImg(e, i, sIdx) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader(); reader.onload = (f) => {
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
-                    const sc = Math.min(300 / img.width, 300 / img.height);
+                    const maxSide = 200; // 同期速度重視で200pxに制限
+                    const sc = Math.min(maxSide / img.width, maxSide / img.height);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.8); renderConfigList();
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.6); // 圧縮率アップ
+                    renderConfigList();
                 };
             }; reader.readAsDataURL(file);
         }
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V1.98</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V1.99</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
         <div class="share-card">
-            <h3>☁️ 画像込み・クラウド同期</h3>
+            <h3>☁️ 大容量画像クラウド同期</h3>
+            <p style="font-size:10px;">Googleドライブ経由で画像を安全に届けます</p>
             <button class="my-button" style="background:#10b981;" onclick="syncToGas()">1. 親機：画像をクラウド送信</button>
             <div id="loader" class="loader"></div>
             <div id="qrcode"></div>
