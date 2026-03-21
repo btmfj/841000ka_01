@@ -3,22 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.10</title>
+    <title>イチゴ選別システム V2.11</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
-        #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
-        #weight-section { text-align: center; margin: 0; flex-shrink: 0; }
-        #app-title { font-size: 14px; font-weight: bold; color: #d63031; margin: 0; }
-        #status { color: #555; font-size: 10px; margin: 0; }
-        #weight { font-size: 7vh; font-weight: bold; color: #00b300; line-height: 1; margin: 2px 0; }
-        #weight span { font-size: 2.5vh; color: #000; }
-        #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
+        #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         
+        /* ヘッダーセクション */
+        #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
+        #app-title { font-size: 28px; font-weight: bold; color: #d63031; margin-bottom: 5px; } /* タイトル巨大化 */
+        #status { color: #555; font-size: 14px; margin-bottom: 5px; }
+        
+        /* 重量表示：現場で一番見たい数値 */
+        #weight { font-size: 12vh; font-weight: bold; color: #00b300; line-height: 1; margin: 5px 0; letter-spacing: -2px; } /* 数値巨大化 */
+        #weight span { font-size: 4vh; color: #000; margin-left: 5px; }
+        #diff-display { font-size: 4.5vh; color: #ff4757; height: 5vh; font-weight: bold; margin-bottom: 10px; }
+        
+        /* フラッシュオーバーレイ */
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 20%; flex-shrink: 0; }
         #flash-img-cell { width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; overflow: hidden; }
-        #flash-text { font-size: 12vh; font-weight: bold; color: #fff; -webkit-text-stroke: 1.5px #000; margin: 0; }
+        #flash-text { font-size: 14vh; font-weight: bold; color: #fff; -webkit-text-stroke: 2px #000; margin: 0; }
         #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap; }
         #flash-img-container.grid-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; box-sizing: border-box; }
         .flash-img-item { object-fit: contain; border: none; box-sizing: border-box; image-rendering: auto; max-width: 100%; max-height: 100%; }
@@ -28,13 +33,21 @@
         .grid-item.bl { justify-content: flex-end; align-items: flex-start; }
         .grid-item.br { justify-content: flex-start; align-items: flex-start; }
 
-        .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
-        .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; cursor: pointer; }
-        #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
-        #tareBtn { background-color: #ff8c00; box-shadow: 0 3px #d97700; }
-        .mode-btn { flex: 1; height: 35px; border-radius: 8px; border: 2px solid #d63031; background: #fff; color: #d63031; font-weight: bold; }
+        /* ボタンセクション：押しやすさ重視 */
+        .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
+        .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; } /* ボタンと文字を巨大化 */
+        .my-button:active { transform: translateY(3px); box-shadow: none; }
+        
+        #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
+        #tareBtn { background-color: #ff8c00; box-shadow: 0 5px #d97700; }
+        
+        .mode-row { display: flex; gap: 10px; margin: 6px 0; }
+        .mode-btn { flex: 1; height: 55px; border-radius: 12px; border: 3px solid #d63031; background: #fff; color: #d63031; font-weight: bold; font-size: 18px; }
         .mode-btn.active { background: #d63031; color: #fff; }
         
+        #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
+
+        /* 設定画面 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
         .share-card { background: #f0fdf4; border: 2px solid #10b981; border-radius: 15px; padding: 15px; margin-top: 20px; text-align: center; }
@@ -42,15 +55,13 @@
         #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border: 4px solid #10b981; border-radius: 10px; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #10b981; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; margin: 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* V2.10 追加：アルバム読み込み用の非表示インプット */
         #qr-file-input { display: none; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.10</div>
+            <div id="app-title">はよ選果 V2.11</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -64,11 +75,11 @@
         <div class="btn-container">
             <button id="connectBtn" class="my-button">① 接続・開始</button>
             <button id="tareBtn" class="my-button">② 基準リセット</button>
-            <div style="display: flex; gap: 8px; margin: 3px 0;">
+            <div class="mode-row">
                 <button id="modePre" class="mode-btn active">事前選果</button>
                 <button id="modeDirect" class="mode-btn">直パック詰め</button>
             </div>
-            <button id="settingsBtn" class="my-button" style="background: #6c757d; height: 35px; font-size: 13px;">🛠 設定・画像同期</button>
+            <button id="settingsBtn" class="my-button">🛠 設定・同期</button>
         </div>
     </div>
 
@@ -105,25 +116,18 @@
             } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ エラー"; }
         }
 
-        // --- V2.10：写真ライブラリからQRを読み込む ---
         async function readQrFromFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+            const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = (f) => {
                 const img = new Image();
                 img.onload = () => {
-                    const canvas = document.createElement("canvas");
-                    const ctx = canvas.getContext("2d");
+                    const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
                     canvas.width = img.width; canvas.height = img.height;
                     ctx.drawImage(img, 0, 0);
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const code = jsQR(imageData.data, imageData.width, imageData.height);
-                    if (code && code.data.startsWith("STRW-")) {
-                        processSync(code.data);
-                    } else {
-                        alert("有効な同期QRコードが見つかりませんでした。");
-                    }
+                    const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+                    if (code && code.data.startsWith("STRW-")) processSync(code.data);
+                    else alert("有効な同期QRが見つかりませんでした。");
                 };
                 img.src = f.target.result;
             };
@@ -154,10 +158,7 @@
                         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-                        if (code && code.data.startsWith("STRW-")) {
-                            stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none";
-                            processSync(code.data); return; 
-                        }
+                        if (code && code.data.startsWith("STRW-")) { stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none"; processSync(code.data); return; }
                     }
                     requestAnimationFrame(tick);
                 };
@@ -262,27 +263,19 @@
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.10</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定 V2.11</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',colorName:'黒',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
-        
         <div class="share-card">
-            <h3>☁️ クラウド同期（離れた場所対応）</h3>
-            <button class="my-button" style="background:#10b981;" onclick="syncToGas()">1. 親機：画像をクラウド送信</button>
-            <div id="loader" class="loader"></div>
-            <div id="qrcode"></div>
-            <p id="sync-msg" style="font-size:11px;"></p>
-            
-            <hr style="margin:15px 0; border:0; border-top:1px dashed #ccc;">
-            
-            <button class="my-button" style="background:#3b82f6;" onclick="scanGasQR()">2-A. 子機：カメラでQR読込</button>
-            
-            <button class="my-button" style="background:#6366f1;" onclick="document.getElementById('qr-file-input').click()">2-B. 子機：写真からQR読込</button>
+            <h3>☁️ クラウド同期</h3>
+            <button class="my-button" style="background:#10b981; height:50px; font-size:16px;" onclick="syncToGas()">1. 親機：クラウド送信</button>
+            <div id="loader" class="loader"></div><div id="qrcode"></div><p id="sync-msg" style="font-size:11px;"></p>
+            <hr style="margin:10px 0; border:0; border-top:1px dashed #ccc;">
+            <button class="my-button" style="background:#3b82f6; height:50px; font-size:16px;" onclick="scanGasQR()">2-A. カメラでQR読込</button>
+            <button class="my-button" style="background:#6366f1; height:50px; font-size:16px;" onclick="document.getElementById('qr-file-input').click()">2-B. 写真からQR読込</button>
             <input type="file" id="qr-file-input" accept="image/*" onchange="readQrFromFile(event)">
-            
             <canvas id="v-canvas"></canvas>
-            <p style="font-size:10px; color:#666; margin-top:10px;">※LINEで受け取ったQRコード画像を保存して、「写真からQR読込」で選んでください。</p>
         </div>
     </div>
 </body>
