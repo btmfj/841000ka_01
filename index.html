@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.00</title>
+    <title>イチゴ選別システム V2.01</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -19,8 +19,8 @@
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 25%; }
         #flash-img-cell { width: 100%; height: 75%; display: flex; justify-content: center; align-items: center; }
         #flash-text { font-size: 12vh; font-weight: bold; color: #fff; -webkit-text-stroke: 1.5px #000; margin: 0; }
-        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 5px; flex-wrap: wrap; }
-        .flash-img-item { max-width: 45%; max-height: 90%; object-fit: contain; border-radius: 10px; border: 2px solid white; }
+        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 5px; flex-wrap: wrap; overflow: hidden; }
+        .flash-img-item { object-fit: contain; border-radius: 10px; border: 2px solid white; transition: all 0.2s ease; }
 
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; cursor: pointer; }
@@ -41,7 +41,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.00</div>
+            <div id="app-title">はよ選果 V2.01</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -71,7 +71,7 @@
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         
-        // 【重要】新しいGAS URLをここに貼り付けてください
+        // --- あなたの最新のGAS URLをここに貼り付けてください ---
         const GAS_URL = "https://script.google.com/macros/s/AKfycbz9MbewMWAiRx2pSsu7usoloHm1guK32Woe_9XNNU_r6nTm8VlNFcOQ4h3VTnQFh5g/exec";
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
@@ -85,25 +85,22 @@
         }
         window.onload = loadSettings;
 
-        // --- 同期ロジック (V1.99 大容量対応版) ---
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "クラウドへ送信中..."; qrDiv.innerHTML = '';
             const syncId = 'STRW-' + Math.random().toString(36).substring(2, 10);
             try {
-                // ドライブ保存版。fetchの完了を待ってからQRを出すように調整
                 await fetch(GAS_URL + "?id=" + syncId, {
                     method: "POST",
                     mode: "no-cors",
                     headers: { "Content-Type": "text/plain" },
                     body: JSON.stringify(currentRanges)
                 });
-                
                 loader.style.display = 'none';
                 qrDiv.innerHTML = '';
                 new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
                 msg.style.color = "#22c55e";
-                msg.innerText = "✅ 送信完了！(ドライブ保存完了)";
+                msg.innerText = "✅ 送信完了！(専用フォルダへ保存)";
             } catch (err) {
                 loader.style.display = 'none';
                 msg.innerText = "❌ エラー: " + err;
@@ -124,10 +121,10 @@
                         if (code && code.data.startsWith("STRW-")) {
                             stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none";
                             fetch(`${GAS_URL}?id=${code.data}`).then(res => res.json()).then(data => {
-                                if (data && data.length > 0 && confirm("画像を含む設定を同期しますか？")) {
+                                if (data && data.length > 0 && confirm("設定を同期しますか？")) {
                                     localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
-                                } else { alert("データがまだ準備できていません。数秒待って再試行してください。"); }
-                            }).catch(() => alert("読込失敗（GAS側でファイル生成中の可能性があります）"));
+                                } else { alert("準備中... 3秒待って再試行してください。"); }
+                            }).catch(() => alert("読込失敗"));
                             return; 
                         }
                     }
@@ -137,7 +134,7 @@
             } catch (err) { alert("カメラ起動失敗"); }
         }
 
-        // --- 判定ロジック ---
+        // --- 判定ロジック (V2.01 画像サイズ最適化版) ---
         function checkDifference(oldW, newW) {
             const diff = oldW - newW; if (diff < 5.0) return;
             document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
@@ -147,13 +144,35 @@
                 if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); } 
             }
         }
+
         function showFlash(text, color, tColor, imgArray) {
-            const overlay = document.getElementById('flash-overlay'), fText = document.getElementById('flash-text'), imgContainer = document.getElementById('flash-img-container');
-            fText.innerText = text; overlay.style.backgroundColor = color; imgContainer.innerHTML = '';
+            const overlay = document.getElementById('flash-overlay'), 
+                  fText = document.getElementById('flash-text'), 
+                  imgContainer = document.getElementById('flash-img-container');
+            
+            fText.innerText = text; 
+            overlay.style.backgroundColor = color; 
+            imgContainer.innerHTML = '';
+
             const activeImages = imgArray.filter(src => src !== null);
+
             if (currentMode === "direct" && activeImages.length > 0) {
                 activeImages.forEach(src => {
-                    const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item';
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.className = 'flash-img-item';
+
+                    // 枚数に応じてサイズを自動調整
+                    if (activeImages.length === 1) {
+                        img.style.maxWidth = '99%'; // 1枚なら全画面
+                        img.style.maxHeight = '95%';
+                    } else if (activeImages.length === 2) {
+                        img.style.maxWidth = '48%'; // 2枚なら横並び
+                        img.style.maxHeight = '90%';
+                    } else {
+                        img.style.maxWidth = '45%'; // 3枚以上なら田の字
+                        img.style.maxHeight = '45%';
+                    }
                     imgContainer.appendChild(img);
                 });
             }
@@ -162,7 +181,6 @@
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('is-active'); }, currentMode === "pre" ? 1200 : 3500);
         }
 
-        // --- Bluetooth制御 ---
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -183,7 +201,6 @@
             } catch (err) { alert("秤が見つかりません"); }
         };
 
-        // --- 設定画面UI制御 ---
         document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
         document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
@@ -209,11 +226,11 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
-                    const maxSide = 200; // 同期速度重視で200pxに制限
+                    const maxSide = 200; 
                     const sc = Math.min(maxSide / img.width, maxSide / img.height);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.6); // 圧縮率アップ
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.6); 
                     renderConfigList();
                 };
             }; reader.readAsDataURL(file);
@@ -221,13 +238,13 @@
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V1.99</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.01</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
         <div class="share-card">
             <h3>☁️ 大容量画像クラウド同期</h3>
-            <p style="font-size:10px;">Googleドライブ経由で画像を安全に届けます</p>
+            <p style="font-size:10px;">Googleドライブの専用フォルダへ保存します</p>
             <button class="my-button" style="background:#10b981;" onclick="syncToGas()">1. 親機：画像をクラウド送信</button>
             <div id="loader" class="loader"></div>
             <div id="qrcode"></div>
