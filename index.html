@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.18</title>
+    <title>イチゴ選別システム V1.03</title>
     <style>
-        /* スタイルはV3.17を完全継承 */
+        /* 基本スタイルはV3.18を継承 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -51,6 +51,14 @@
         .config-inputs input[type="number"] { width: 70px; }
         .config-inputs input[type="text"] { width: 90px; }
         .config-inputs select { min-width: 70px; }
+        
+        /* 速度調整周りの新しいスタイル */
+        .speed-control-box { display: flex; align-items: center; gap: 8px; background: #eee; padding: 5px 10px; border-radius: 10px; margin-top: 5px; width: 100%; box-sizing: border-box; }
+        .speed-btn { width: 45px; height: 45px; border-radius: 8px; border: 1px solid #999; background: #fff; font-size: 24px; font-weight: bold; cursor: pointer; color: #d63031; display: flex; align-items: center; justify-content: center; }
+        .speed-btn:active { background: #ddd; }
+        input[type="range"] { flex: 1; height: 10px; cursor: pointer; }
+        .speed-val { min-width: 60px; font-size: 14px; font-weight: bold; color: #333; text-align: center; }
+
         .image-section { margin-top: 10px; }
         .image-slots { display: flex; gap: 12px; justify-content: flex-start; margin-top: 5px; }
         .slot { position: relative; width: 65px; height: 65px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; }
@@ -58,6 +66,7 @@
         .slot label { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 24px; color: #007bff; cursor: pointer; }
         .slot-del { position: absolute; top: -8px; right: -8px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .del-row-btn { background: #ff4757; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 10px; width: 100%; }
+        
         .share-card { background: #f0fdf4; border: 3px solid #10b981; border-radius: 20px; padding: 20px; margin-top: 30px; text-align: center; }
         .share-card h3 { font-size: 22px; margin-top: 0; color: #065f46; }
         .sync-button { height: 55px; font-size: 18px; margin: 8px 0; }
@@ -67,7 +76,6 @@
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; margin: 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .play-preview-btn { height: 45px; width: 45px; border-radius: 8px; border: 1px solid #999; cursor: pointer; background: #f8f9fa; font-size: 18px; }
-        .speed-val { font-size: 14px; font-weight: bold; color: #333; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -76,7 +84,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.18</div>
+            <div id="app-title">はよ選果 V1.03</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -185,7 +193,7 @@
             currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2L", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", ttsRate: 1.0, colorName: "青", images: [null, null, null, null] }];
             currentRanges = currentRanges.map(r => {
                 if(r.audio) r.audio = toHalfWidth(r.audio);
-                if(r.ttsRate === undefined) r.ttsRate = 1.0; // 既存データに速度設定がない場合は1.0
+                if(r.ttsRate === undefined) r.ttsRate = 1.0;
                 return r;
             });
             currentRanges.sort((a, b) => b.min - a.min);
@@ -209,16 +217,14 @@
             if (!audioName) return;
             const file = getFileName(audioName);
             const preview = new Audio("./" + file);
-            preview.play().catch(e => {
-                alert("再生エラー: 「" + file + "」が見つかりません。");
-            });
+            preview.play().catch(e => { alert("再生エラー: 「" + file + "」が見つかりません。"); });
         }
 
         function speak(text, gender, rate = 1.0) {
             if (!text) return;
             window.speechSynthesis.cancel();
             const uttr = new SpeechSynthesisUtterance(text);
-            uttr.rate = rate; // 速度を適用
+            uttr.rate = rate;
             if (voices.length > 0) {
                 const target = gender === "male" ? ["Male", "Otoya", "Ichiro"] : ["Female", "Kyoko", "Hanako"];
                 uttr.voice = voices.find(v => target.some(n => v.name.includes(n))) || voices[0];
@@ -296,9 +302,7 @@
             const match = currentRanges.find(r => diff >= r.min);
             if (match) { 
                 showFlash(match.label, match.colorName || "黒", match.images || []); 
-                if (match.audioMode === "tts") { 
-                    speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0); 
-                } 
+                if (match.audioMode === "tts") { speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0); } 
                 else { 
                     const cleanKey = toHalfWidth(match.audio);
                     if (sounds[cleanKey]) { sounds[cleanKey].currentTime = 0; sounds[cleanKey].play(); } 
@@ -364,6 +368,18 @@
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
         
+        // 速度調整用のヘルパー関数
+        function adjustSpeed(idx, delta) {
+            const slider = document.getElementById(`speedSlider-${idx}`);
+            const valDisplay = document.getElementById(`speedVal-${idx}`);
+            let newVal = parseFloat(slider.value) + delta;
+            newVal = Math.min(2.0, Math.max(0.5, newVal));
+            newVal = Math.round(newVal * 10) / 10; // 0.1単位で四捨五入
+            slider.value = newVal;
+            valDisplay.innerText = newVal.toFixed(1) + "倍速";
+            currentRanges[idx].ttsRate = newVal;
+        }
+
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
@@ -388,10 +404,11 @@
                                 <input type="text" id="ttsText-${i}" value="${r.ttsText || ''}" placeholder="読上文" style="width:70px;" oninput="currentRanges[${i}].ttsText=this.value">
                                 <select id="ttsVoice-${i}" onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
                                 <button class="play-preview-btn" onclick="speak(document.getElementById('ttsText-${i}').value || currentRanges[${i}].label, document.getElementById('ttsVoice-${i}').value, currentRanges[${i}].ttsRate)">▶</button>
-                                <div class="input-group" style="width:100%; margin-top:5px;">
-                                    <span class="guide-label">速度：</span>
-                                    <input type="range" min="0.5" max="2.0" step="0.1" value="${r.ttsRate || 1.0}" oninput="currentRanges[${i}].ttsRate=parseFloat(this.value); this.nextElementSibling.innerText=this.value+'倍速'">
-                                    <span class="speed-val">${r.ttsRate || 1.0}倍速</span>
+                                <div class="speed-control-box">
+                                    <button class="speed-btn" onclick="adjustSpeed(${i}, -0.1)">－</button>
+                                    <input type="range" id="speedSlider-${i}" min="0.5" max="2.0" step="0.1" value="${r.ttsRate || 1.0}" oninput="currentRanges[${i}].ttsRate=parseFloat(this.value); document.getElementById('speedVal-${i}').innerText=this.value+'倍速'">
+                                    <button class="speed-btn" onclick="adjustSpeed(${i}, 0.1)">＋</button>
+                                    <span class="speed-val" id="speedVal-${i}">${(r.ttsRate || 1.0).toFixed(1)}倍速</span>
                                 </div>
                             ` : `
                                 <select id="audioSel-${i}" onchange="currentRanges[${i}].audio=this.value">
