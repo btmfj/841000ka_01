@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.02</title>
+    <title>イチゴ選別システム V2.03</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -16,16 +16,17 @@
         
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
-        /* 文字エリアを少し小さくして画像を上に詰める */
-        #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 20%; }
-        /* 画像エリアを80%に拡大し、余白を徹底排除 */
-        #flash-img-cell { width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; }
+        /* 文字エリア：画像を大きく見せるため控えめに設定（20%） */
+        #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 20%; flex-shrink: 0; }
+        /* 画像エリア：画面の大部分（80%）を使用 */
+        #flash-img-cell { width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; overflow: hidden; }
         #flash-text { font-size: 12vh; font-weight: bold; color: #fff; -webkit-text-stroke: 1.5px #000; margin: 0; }
-        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 2px; flex-wrap: wrap; overflow: hidden; }
-        /* 画像自体の枠線を細くし、画面端まで使えるように修正 */
-        .flash-img-item { object-fit: contain; border-radius: 5px; border: 1px solid white; box-sizing: border-box; }
+        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 2px; flex-wrap: wrap; }
+        
+        /* 画像のスタイル：枠線（border）を完全に削除 */
+        .flash-img-item { object-fit: contain; border-radius: 0; border: none; box-sizing: border-box; }
 
-        .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; }
+        .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; cursor: pointer; }
         #connectBtn { background-color: #28a745; box-shadow: 0 3px #1e7e34; }
         #tareBtn { background-color: #ff8c00; box-shadow: 0 3px #d97700; }
@@ -44,7 +45,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.02</div>
+            <div id="app-title">はよ選果 V2.03</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -147,7 +148,7 @@
             }
         }
 
-        // --- 判定フラッシュ表示ロジック (V2.02 限界突破版) ---
+        // --- 判定フラッシュ表示ロジック (V2.03 画像最大化・枠線削除版) ---
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay'), 
                   fText = document.getElementById('flash-text'), 
@@ -165,6 +166,7 @@
                     img.src = src;
                     img.className = 'flash-img-item';
 
+                    // 枚数に応じてサイズを自動調整（枠線はCSSで削除済み）
                     if (activeImages.length === 1) {
                         img.style.width = '100%'; 
                         img.style.height = '100%';
@@ -230,7 +232,7 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
-                    const maxSide = 300; // 少し解像度を上げて綺麗に
+                    const maxSide = 300; // 解像度を上げて綺麗に
                     const sc = Math.min(maxSide / img.width, maxSide / img.height);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
@@ -242,7 +244,7 @@
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.02</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.03</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
