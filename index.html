@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.09</title>
+    <title>イチゴ選別システム V2.10</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -14,42 +14,19 @@
         #weight span { font-size: 2.5vh; color: #000; }
         #diff-display { font-size: 3vh; color: #ff4757; height: 3.5vh; font-weight: bold; margin: 0; }
         
-        /* フラッシュオーバーレイ：背景色は動的に変更 */
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
-        
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 20%; flex-shrink: 0; }
         #flash-img-cell { width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; overflow: hidden; }
         #flash-text { font-size: 12vh; font-weight: bold; color: #fff; -webkit-text-stroke: 1.5px #000; margin: 0; }
-        
         #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap; }
-        
-        /* 3枚以上の時：Grid（背景色はJSで動的に指定） */
-        #flash-img-container.grid-layout { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            grid-template-rows: 1fr 1fr;    
-            gap: 2px;
-            padding: 2px;
-            box-sizing: border-box;
-        }
-
-        .flash-img-item { 
-            object-fit: contain; 
-            border: none; 
-            box-sizing: border-box; 
-            image-rendering: auto; 
-            max-width: 100%;
-            max-height: 100%;
-        }
-        
+        #flash-img-container.grid-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; box-sizing: border-box; }
+        .flash-img-item { object-fit: contain; border: none; box-sizing: border-box; image-rendering: auto; max-width: 100%; max-height: 100%; }
         .grid-item { width: 100%; height: 100%; display: flex; overflow: hidden; }
-
-        /* セル内での画像の寄り方設定（中央寄り） */
-        .grid-item.tl { justify-content: flex-end; align-items: flex-end; }   /* 左上：右下詰め */
-        .grid-item.tr { justify-content: flex-start; align-items: flex-end; } /* 右上：左下詰め */
-        .grid-item.bl { justify-content: flex-end; align-items: flex-start; }   /* 左下：右上詰め */
-        .grid-item.br { justify-content: flex-start; align-items: flex-start; } /* 右下：左上詰め */
+        .grid-item.tl { justify-content: flex-end; align-items: flex-end; }
+        .grid-item.tr { justify-content: flex-start; align-items: flex-end; }
+        .grid-item.bl { justify-content: flex-end; align-items: flex-start; }
+        .grid-item.br { justify-content: flex-start; align-items: flex-start; }
 
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; cursor: pointer; }
@@ -65,12 +42,15 @@
         #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border: 4px solid #10b981; border-radius: 10px; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #10b981; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; margin: 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* V2.10 追加：アルバム読み込み用の非表示インプット */
+        #qr-file-input { display: none; }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.09</div>
+            <div id="app-title">はよ選果 V2.10</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -103,10 +83,7 @@
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
-        // カラーパレット設定
-        const colorPalette = {
-            "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000"
-        };
+        const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -124,8 +101,46 @@
                 await fetch(GAS_URL + "?id=" + syncId, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(currentRanges) });
                 loader.style.display = 'none'; qrDiv.innerHTML = '';
                 new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
-                msg.style.color = "#22c55e"; msg.innerText = "✅ 送信完了！";
+                msg.style.color = "#22c55e"; msg.innerText = "✅ 送信完了！ ID: " + syncId;
             } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ エラー"; }
+        }
+
+        // --- V2.10：写真ライブラリからQRを読み込む ---
+        async function readQrFromFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+                    canvas.width = img.width; canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    if (code && code.data.startsWith("STRW-")) {
+                        processSync(code.data);
+                    } else {
+                        alert("有効な同期QRコードが見つかりませんでした。");
+                    }
+                };
+                img.src = f.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function processSync(syncId) {
+            const msg = document.getElementById('sync-msg');
+            msg.style.color = "#000"; msg.innerText = "☁️ データ取得中...";
+            try {
+                const res = await fetch(`${GAS_URL}?id=${syncId}`);
+                const data = await res.json();
+                if (data && data.length > 0 && confirm("設定を同期（上書き）しますか？")) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                    location.reload();
+                }
+            } catch (err) { alert("取得失敗: IDが古い可能性があります"); }
         }
 
         async function scanGasQR() {
@@ -141,12 +156,7 @@
                         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
                         if (code && code.data.startsWith("STRW-")) {
                             stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none";
-                            fetch(`${GAS_URL}?id=${code.data}`).then(res => res.json()).then(data => {
-                                if (data && data.length > 0 && confirm("設定を同期しますか？")) {
-                                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
-                                }
-                            });
-                            return; 
+                            processSync(code.data); return; 
                         }
                     }
                     requestAnimationFrame(tick);
@@ -165,61 +175,35 @@
             }
         }
 
-        // --- カラーセレクト対応フラッシュ表示 (V2.09) ---
         function showFlash(text, colorName, imgArray) {
-            const overlay = document.getElementById('flash-overlay'), 
-                  fText = document.getElementById('flash-text'), 
-                  imgContainer = document.getElementById('flash-img-container');
-            
+            const overlay = document.getElementById('flash-overlay'), fText = document.getElementById('flash-text'), imgContainer = document.getElementById('flash-img-container');
             const bgColor = colorPalette[colorName] || "#000000";
-            
-            fText.innerText = text; 
-            overlay.style.backgroundColor = bgColor; // 全体背景を指定色に
-            imgContainer.innerHTML = '';
-            imgContainer.className = ''; 
-
+            fText.innerText = text; overlay.style.backgroundColor = bgColor;
+            imgContainer.innerHTML = ''; imgContainer.className = ''; 
             const activeImages = imgArray.filter(src => src !== null);
             const activeCount = activeImages.length;
-
             if (currentMode === "direct" && activeCount > 0) {
                 if (imgArray.length >= 3 && activeCount >= 3) {
-                    imgContainer.classList.add('grid-layout');
-                    imgContainer.style.backgroundColor = bgColor; // 隙間の色
+                    imgContainer.classList.add('grid-layout'); imgContainer.style.backgroundColor = bgColor;
                     const posClasses = ['tl', 'tr', 'bl', 'br'];
                     for (let i = 0; i < 4; i++) {
-                        const gridItem = document.createElement('div');
-                        gridItem.className = 'grid-item ' + posClasses[i];
-                        gridItem.style.backgroundColor = bgColor; // セル背景を指定色に
-                        if (imgArray[i]) {
-                            const img = document.createElement('img');
-                            img.src = imgArray[i];
-                            img.className = 'flash-img-item';
-                            gridItem.appendChild(img);
-                        }
+                        const gridItem = document.createElement('div'); gridItem.className = 'grid-item ' + posClasses[i];
+                        gridItem.style.backgroundColor = bgColor;
+                        if (imgArray[i]) { const img = document.createElement('img'); img.src = imgArray[i]; img.className = 'flash-img-item'; gridItem.appendChild(img); }
                         imgContainer.appendChild(gridItem);
                     }
                 } else {
                     imgContainer.style.backgroundColor = bgColor; 
                     activeImages.forEach(src => {
-                        const img = document.createElement('img');
-                        img.src = src;
-                        img.className = 'flash-img-item';
-                        if (activeCount === 1) {
-                            img.style.width = '100%'; img.style.height = '100%';
-                        } else {
-                            img.style.maxWidth = '49%'; img.style.maxHeight = '98%';
-                        }
+                        const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item';
+                        if (activeCount === 1) { img.style.width = '100%'; img.style.height = '100%'; } else { img.style.maxWidth = '49%'; img.style.maxHeight = '98%'; }
                         imgContainer.appendChild(img);
                     });
                 }
             }
-            
             overlay.style.display = 'flex'; overlay.classList.add('is-active');
             if (window.flashTimer) clearTimeout(window.flashTimer);
-            window.flashTimer = setTimeout(() => { 
-                overlay.style.display = 'none'; overlay.classList.remove('is-active'); 
-                imgContainer.style.backgroundColor = ''; 
-            }, currentMode === "pre" ? 1200 : 3500);
+            window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('is-active'); imgContainer.style.backgroundColor = ''; }, currentMode === "pre" ? 1200 : 3500);
         }
 
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
@@ -256,18 +240,8 @@
                     const img = r.images[j];
                     slots += `<div style="position:relative; width:45px; height:45px; border:1px dashed #ccc; background:#eee;">${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover;"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>`:`<label style="cursor:pointer;font-size:12px;color:#007bff;display:flex;align-items:center;justify-content:center;height:100%;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
-                // カラーセレクトのHTML追加
                 const colorOptions = Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('');
-                
-                div.innerHTML = `
-                    <div style="display:flex; gap:5px; align-items:center; margin-bottom:5px; flex-wrap:wrap;">
-                        <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:45px;">g〜 
-                        <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:50px;">
-                        <select onchange="currentRanges[${i}].audio=this.value" style="width:50px;">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
-                        <select onchange="currentRanges[${i}].colorName=this.value" style="width:65px;">${colorOptions}</select>
-                        <button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto;background:red;color:white;border:none;padding:5px 8px;border-radius:5px;">削</button>
-                    </div>
-                    <div style="display:flex;gap:10px;">${slots}</div>`;
+                div.innerHTML = `<div style="display:flex; gap:5px; align-items:center; margin-bottom:5px; flex-wrap:wrap;"><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:45px;">g〜 <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:50px;"><select onchange="currentRanges[${i}].audio=this.value" style="width:50px;">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select><select onchange="currentRanges[${i}].colorName=this.value" style="width:65px;">${colorOptions}</select><button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto;background:red;color:white;border:none;padding:5px 8px;border-radius:5px;">削</button></div><div style="display:flex;gap:10px;">${slots}</div>`;
                 area.appendChild(div);
             });
         }
@@ -278,29 +252,37 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
-                    const maxSide = 1024;
-                    const sc = Math.min(maxSide / img.width, maxSide / img.height, 1.0);
+                    const maxSide = 1024; const sc = Math.min(maxSide / img.width, maxSide / img.height, 1.0);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.8); 
-                    renderConfigList();
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.8); renderConfigList();
                 };
             }; reader.readAsDataURL(file);
         }
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.09</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.10</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',colorName:'黒',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
+        
         <div class="share-card">
-            <h3>☁️ 高画質画像クラウド同期</h3>
+            <h3>☁️ クラウド同期（離れた場所対応）</h3>
             <button class="my-button" style="background:#10b981;" onclick="syncToGas()">1. 親機：画像をクラウド送信</button>
-            <div id="loader" class="loader"></div><div id="qrcode"></div><p id="sync-msg" style="font-size:11px;"></p>
+            <div id="loader" class="loader"></div>
+            <div id="qrcode"></div>
+            <p id="sync-msg" style="font-size:11px;"></p>
+            
             <hr style="margin:15px 0; border:0; border-top:1px dashed #ccc;">
-            <button class="my-button" style="background:#3b82f6;" onclick="scanGasQR()">2. 子機：画像をクラウド読込</button>
+            
+            <button class="my-button" style="background:#3b82f6;" onclick="scanGasQR()">2-A. 子機：カメラでQR読込</button>
+            
+            <button class="my-button" style="background:#6366f1;" onclick="document.getElementById('qr-file-input').click()">2-B. 子機：写真からQR読込</button>
+            <input type="file" id="qr-file-input" accept="image/*" onchange="readQrFromFile(event)">
+            
             <canvas id="v-canvas"></canvas>
+            <p style="font-size:10px; color:#666; margin-top:10px;">※LINEで受け取ったQRコード画像を保存して、「写真からQR読込」で選んでください。</p>
         </div>
     </div>
 </body>
