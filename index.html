@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.30</title>
+    <title>イチゴ選別システム V3.40</title>
     <style>
-        /* 基本スタイルはV3.20を継承 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -15,13 +14,16 @@
         #weight span { font-size: 4vh; color: #000; margin-left: 5px; }
         #diff-display { font-size: 4.5vh; color: #ff4757; height: 5vh; font-weight: bold; margin-bottom: 10px; }
         
+        /* フラッシュオーバーレイ（田の字レイアウト対応） */
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 20%; flex-shrink: 0; }
         #flash-img-cell { width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; overflow: hidden; }
         #flash-text { font-size: 14vh; font-weight: bold; color: #fff; -webkit-text-stroke: 2px #000; margin: 0; }
         #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap; }
-        
+        #flash-img-container.grid-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; box-sizing: border-box; }
+        .flash-img-item { object-fit: contain; border: none; box-sizing: border-box; image-rendering: auto; max-width: 100%; max-height: 100%; width: 100%; height: 100%; }
+
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
         #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
@@ -32,12 +34,12 @@
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 15px; box-sizing: border-box; overflow-y: auto; }
-        .config-row { border: 2px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: #fafafa; }
+        .config-row { border: 2px solid #ddd; padding: 12px; margin-bottom: 15px; border-radius: 12px; background: #fafafa; }
         .input-group { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; flex-wrap: wrap; }
-        .guide-label { font-size: 14px; font-weight: bold; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; min-width: 70px; text-align: center; }
-        .config-inputs input, .config-inputs select { height: 40px; font-size: 16px; font-weight: bold; border: 1px solid #999; border-radius: 8px; padding: 0 8px; }
+        .guide-label { font-size: 13px; font-weight: bold; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; min-width: 70px; text-align: center; }
+        .config-inputs input, .config-inputs select { height: 38px; font-size: 16px; font-weight: bold; border: 1px solid #999; border-radius: 8px; padding: 0 8px; }
         
-        .image-slots { display: flex; gap: 10px; justify-content: flex-start; margin-top: 5px; }
+        .image-slots { display: flex; gap: 8px; justify-content: flex-start; margin-top: 5px; }
         .slot { position: relative; width: 60px; height: 60px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; }
         .slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
         .slot label { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 20px; color: #007bff; cursor: pointer; }
@@ -45,12 +47,13 @@
         .share-card { background: #f0fdf4; border: 3px solid #10b981; border-radius: 20px; padding: 20px; margin-top: 30px; text-align: center; }
         #qrcode { margin: 15px auto; display: flex; justify-content: center; background: white; padding: 10px; min-height: 160px; border: 1px solid #ddd; }
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; margin: 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.30</div>
+            <div id="app-title">はよ選果 V3.40</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -105,11 +108,8 @@
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
         const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
 
-        // --- 音声リストの管理 ---
         let availableVoices = [];
-        function loadVoices() {
-            availableVoices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja'));
-        }
+        function loadVoices() { availableVoices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja')); }
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
 
@@ -128,28 +128,17 @@
                     sounds[r.audio] = new Audio("./" + r.audio.toLowerCase() + ".mp3");
                 }
             });
+            sounds["start"] = new Audio("./start.mp3"); // Start音を確実に登録
         }
 
         function speakText(text, gender) {
             if (!text) return;
-            window.speechSynthesis.cancel(); // 前の音声を止める
-            
-            // 少しだけ自然にするために「、」を追加して間を作る
-            const processedText = text.includes('、') ? text : text + '、';
-            const uttr = new SpeechSynthesisUtterance(processedText);
-            
-            uttr.rate = 1.1;  // 速さ
-            uttr.pitch = 1.0; // 高さ
-            uttr.volume = 1.0;
-
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(text + '、');
+            uttr.rate = 1.1; uttr.pitch = 1.0;
             if (availableVoices.length > 0) {
-                let voice = null;
-                if (gender === "male") {
-                    voice = availableVoices.find(v => v.name.includes('Male') || v.name.includes('Otoya') || v.name.includes('Ichiro') || v.name.includes('Keita') || (v.name.includes('Google') && v.name.includes('1')));
-                } else {
-                    voice = availableVoices.find(v => v.name.includes('Female') || v.name.includes('Kyoko') || v.name.includes('Hanako') || v.name.includes('Nanako'));
-                }
-                uttr.voice = voice || availableVoices[0];
+                let vName = gender === "male" ? ['Male','Otoya','Ichiro','Keita'] : ['Female','Kyoko','Hanako','Nanako'];
+                uttr.voice = availableVoices.find(v => vName.some(n => v.name.includes(n))) || availableVoices[0];
             }
             window.speechSynthesis.speak(uttr);
         }
@@ -159,7 +148,7 @@
                 speakText(match.ttsText || match.label, match.ttsVoice || "female");
             } else {
                 const audioObj = sounds[match.audio];
-                if (audioObj) { audioObj.currentTime = 0; audioObj.play(); }
+                if (audioObj) { audioObj.currentTime = 0; audioObj.play().catch(e=>console.log("Audio play error",e)); }
             }
         }
 
@@ -188,12 +177,10 @@
                     const img = r.images[j];
                     slots += `<div class="slot">${img?`<img src="${img}"><button style="position:absolute;top:-5px;right:-5px;background:red;color:white;border-radius:50%;width:20px;height:20px;border:none;font-size:12px;" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
-                
                 div.innerHTML = `
                     <div class="config-inputs">
                         <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
-                        <div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" style="width:100px;" onchange="currentRanges[${i}].label=this.value"></div>
-                        
+                        <div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" style="width:80px;" onchange="currentRanges[${i}].label=this.value"></div>
                         <div class="input-group">
                             <span class="guide-label">音声形式：</span>
                             <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
@@ -201,49 +188,33 @@
                                 <option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option>
                             </select>
                         </div>
-
                         ${r.audioMode === 'tts' ? `
                             <div class="input-group">
-                                <span class="guide-label">読上げ文：</span>
-                                <input type="text" value="${r.ttsText || ''}" placeholder="ニ、エル。" style="width:100px;" onchange="currentRanges[${i}].ttsText=this.value">
-                                <select onchange="currentRanges[${i}].ttsVoice=this.value">
-                                    <option value="female" ${r.ttsVoice==='female'?'selected':''}>女性</option>
-                                    <option value="male" ${r.ttsVoice==='male'?'selected':''}>男性</option>
-                                </select>
-                                <button onclick="speakText('${r.ttsText || r.label}', '${r.ttsVoice || 'female'}')" style="padding:5px 12px; border-radius:8px; background:#ddd; border:1px solid #bbb;">▶ テスト</button>
-                            </div>
-                        ` : `
-                            <div class="input-group">
-                                <span class="guide-label">MP3選択：</span>
-                                <select onchange="currentRanges[${i}].audio=this.value">
-                                    ${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}
-                                </select>
-                            </div>
-                        `}
-
-                        <div class="input-group">
-                            <span class="guide-label">背景色：</span>
-                            <select onchange="currentRanges[${i}].colorName=this.value">
-                                ${Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('')}
-                            </select>
-                        </div>
+                                <span class="guide-label">読上げ：</span>
+                                <input type="text" value="${r.ttsText || ''}" placeholder="ニ、エル" style="width:80px;" onchange="currentRanges[${i}].ttsText=this.value">
+                                <select onchange="currentRanges[${i}].ttsVoice=this.value"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
+                                <button onclick="speakText('${r.ttsText || r.label}', '${r.ttsVoice || 'female'}')" style="padding:4px 8px; border-radius:6px;">▶</button>
+                            </div>` : `
+                            <div class="input-group"><span class="guide-label">音源：</span><select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select></div>`
+                        }
+                        <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('')}</select></div>
                     </div>
                     <div class="image-slots">${slots}</div>
-                    <button style="background:#ff4757; color:white; border:none; padding:10px; border-radius:8px; margin-top:12px; width:100%; font-weight:bold;" onclick="currentRanges.splice(${i},1);renderConfigList()">判定を削除</button>`;
+                    <button style="background:#ff4757; color:white; border:none; padding:8px; border-radius:8px; margin-top:10px; width:100%;" onclick="currentRanges.splice(${i},1);renderConfigList()">削除</button>`;
                 area.appendChild(div);
             });
         }
 
-        // --- 画面表示 / Bluetoothロジック (V3.00継承) ---
         function showFlash(text, colorName, imgArray) {
             const overlay = document.getElementById('flash-overlay'), fText = document.getElementById('flash-text'), imgContainer = document.getElementById('flash-img-container');
             const bgColor = colorPalette[colorName] || "#000000";
             fText.innerText = text; overlay.style.backgroundColor = bgColor;
-            imgContainer.innerHTML = '';
+            imgContainer.innerHTML = ''; imgContainer.className = '';
             const activeImages = imgArray.filter(src => src !== null);
             if (currentMode === "direct" && activeImages.length > 0) {
+                if (activeImages.length >= 3) imgContainer.classList.add('grid-layout');
                 activeImages.forEach(src => {
-                    const img = document.createElement('img'); img.src = src; img.style.cssText = 'max-width:49%; max-height:95%; object-fit:contain; border-radius:4px;';
+                    const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item';
                     imgContainer.appendChild(img);
                 });
             }
@@ -261,6 +232,7 @@
                 bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
                 await bluetoothChar.startNotifications();
                 document.getElementById('status').innerText = "✅ 稼働中";
+                if(sounds["start"]) sounds["start"].play(); // Start音の復元
                 bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
                     const w = parseFloat(new TextDecoder().decode(e.target.value));
                     document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
@@ -304,7 +276,7 @@
                     requestAnimationFrame(tick);
                 };
                 requestAnimationFrame(tick);
-            } catch (err) { alert("カメラの起動に失敗しました"); }
+            } catch (err) { alert("カメラの起動失敗"); }
         }
 
         async function processSync(syncId) {
@@ -317,7 +289,7 @@
             } catch (err) { alert("データ取得に失敗しました"); }
         }
 
-        function addRangeRow() { currentRanges.push({min:0, label:'新規格', audio:'3', audioMode:'tts', ttsText:'、シンキカク。', ttsVoice:'female', colorName:'黒', images:[null,null,null,null]}); renderConfigList(); }
+        function addRangeRow() { currentRanges.push({min:0, label:'新規格', audio:'3', audioMode:'mp3', ttsText:'', ttsVoice:'female', colorName:'黒', images:[null,null,null,null]}); renderConfigList(); }
         function addImg(e, i, sIdx) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader(); reader.onload = (f) => {
