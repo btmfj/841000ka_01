@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.14</title>
+    <title>イチゴ選別システム V3.15</title>
     <style>
-        /* スタイルはV3.13を完全継承 */
+        /* スタイルはV3.14を完全継承 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -66,7 +66,6 @@
         #qr-file-input { display: none; }
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; margin: 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* 再生ボタン用の共通スタイル */
         .play-preview-btn { height: 45px; width: 45px; border-radius: 8px; border: 1px solid #999; cursor: pointer; background: #f8f9fa; font-size: 18px; }
     </style>
 </head>
@@ -76,7 +75,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.14</div>
+            <div id="app-title">はよ選果 V3.15</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -179,8 +178,9 @@
             sounds = {};
             currentRanges.forEach(r => {
                 if ((r.audioMode === "mp3" || !r.audioMode) && r.audio) {
-                    const encodedName = encodeURIComponent(r.audio);
-                    if(!sounds[r.audio]) sounds[r.audio] = new Audio("./" + encodedName + ".mp3");
+                    // 全角文字を確実にエンコード
+                    const fileName = encodeURIComponent(r.audio) + ".mp3";
+                    if(!sounds[r.audio]) sounds[r.audio] = new Audio("./" + fileName);
                 }
             });
             sounds["start"] = new Audio("./start.mp3");
@@ -188,8 +188,13 @@
 
         function playMp3Preview(audioName) {
             if (!audioName) return;
-            const preview = new Audio("./" + encodeURIComponent(audioName) + ".mp3");
-            preview.play().catch(e => alert("再生エラー: " + audioName));
+            // プレビュー再生時も強制的にエンコードを適用
+            const fileName = encodeURIComponent(audioName) + ".mp3";
+            const preview = new Audio("./" + fileName);
+            preview.play().catch(e => {
+                console.error("Playback failed for:", fileName);
+                alert("再生エラー: 「" + audioName + "」が見つかりません。ファイル名を確認してください。");
+            });
         }
 
         function speak(text, gender) {
