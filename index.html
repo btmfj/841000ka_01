@@ -3,18 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.11</title>
+    <title>イチゴ選別システム V2.12</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         
-        /* ヘッダーセクション */
+        /* メイン画面：視認性重視 */
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
-        #app-title { font-size: 28px; font-weight: bold; color: #d63031; margin-bottom: 5px; } /* タイトル巨大化 */
+        #app-title { font-size: 28px; font-weight: bold; color: #d63031; margin-bottom: 5px; }
         #status { color: #555; font-size: 14px; margin-bottom: 5px; }
-        
-        /* 重量表示：現場で一番見たい数値 */
-        #weight { font-size: 12vh; font-weight: bold; color: #00b300; line-height: 1; margin: 5px 0; letter-spacing: -2px; } /* 数値巨大化 */
+        #weight { font-size: 12vh; font-weight: bold; color: #00b300; line-height: 1; margin: 5px 0; letter-spacing: -2px; }
         #weight span { font-size: 4vh; color: #000; margin-left: 5px; }
         #diff-display { font-size: 4.5vh; color: #ff4757; height: 5vh; font-weight: bold; margin-bottom: 10px; }
         
@@ -33,35 +31,55 @@
         .grid-item.bl { justify-content: flex-end; align-items: flex-start; }
         .grid-item.br { justify-content: flex-start; align-items: flex-start; }
 
-        /* ボタンセクション：押しやすさ重視 */
+        /* メイン画面ボタン */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
-        .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; } /* ボタンと文字を巨大化 */
-        .my-button:active { transform: translateY(3px); box-shadow: none; }
-        
+        .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
         #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
         #tareBtn { background-color: #ff8c00; box-shadow: 0 5px #d97700; }
-        
         .mode-row { display: flex; gap: 10px; margin: 6px 0; }
         .mode-btn { flex: 1; height: 55px; border-radius: 12px; border: 3px solid #d63031; background: #fff; color: #d63031; font-weight: bold; font-size: 18px; }
         .mode-btn.active { background: #d63031; color: #fff; }
-        
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
 
-        /* 設定画面 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-        .config-row { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-        .share-card { background: #f0fdf4; border: 2px solid #10b981; border-radius: 15px; padding: 15px; margin-top: 20px; text-align: center; }
-        #qrcode { margin: 10px auto; display: flex; justify-content: center; background: white; padding: 10px; min-height: 160px; }
-        #v-canvas { width: 100%; max-width: 280px; display: none; margin: 10px auto; border: 4px solid #10b981; border-radius: 10px; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #10b981; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; margin: 10px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* --- 設定画面（モーダル）のスタイル強化 --- */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 15px; box-sizing: border-box; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-title { font-size: 26px; font-weight: bold; }
+        .close-btn { font-size: 35px; border: none; background: none; color: #666; cursor: pointer; padding: 0 10px; }
+        
+        /* 判定範囲の各行 */
+        .config-row { border: 2px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: #fafafa; }
+        .config-inputs { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        .config-inputs input, .config-inputs select { height: 45px; font-size: 18px; font-weight: bold; border: 1px solid #999; border-radius: 8px; padding: 0 5px; }
+        .config-inputs input[type="number"] { width: 65px; }
+        .config-inputs input[type="text"] { width: 80px; }
+        .config-inputs select { min-width: 60px; }
+        
+        /* 画像スロット */
+        .image-slots { display: flex; gap: 12px; justify-content: flex-start; margin-top: 5px; }
+        .slot { position: relative; width: 65px; height: 65px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; overflow: visible; }
+        .slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+        .slot label { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 24px; color: #007bff; cursor: pointer; }
+        .slot-del { position: absolute; top: -8px; right: -8px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+        .del-row-btn { background: #ff4757; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 16px; margin-left: auto; }
+
+        /* 同期セクション */
+        .share-card { background: #f0fdf4; border: 3px solid #10b981; border-radius: 20px; padding: 20px; margin-top: 30px; text-align: center; }
+        .share-card h3 { font-size: 22px; margin-top: 0; color: #065f46; }
+        .sync-button { height: 55px; font-size: 18px; margin: 8px 0; }
+        
+        #qrcode { margin: 15px auto; display: flex; justify-content: center; background: white; padding: 10px; min-height: 160px; border: 1px solid #ddd; }
+        #v-canvas { width: 100%; max-width: 320px; display: none; margin: 15px auto; border: 4px solid #10b981; border-radius: 12px; }
         #qr-file-input { display: none; }
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; margin: 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.11</div>
+            <div id="app-title">はよ選果 V2.12</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -79,8 +97,36 @@
                 <button id="modePre" class="mode-btn active">事前選果</button>
                 <button id="modeDirect" class="mode-btn">直パック詰め</button>
             </div>
-            <button id="settingsBtn" class="my-button">🛠 設定・同期</button>
+            <button id="settingsBtn" class="my-button">🛠 設定</button>
         </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-header">
+            <div class="modal-title">設定</div>
+            <button class="close-btn" onclick="document.getElementById('settings-modal').style.display='none'">✕</button>
+        </div>
+        
+        <div id="config-list"></div>
+        
+        <button onclick="addRangeRow()" style="width:100%; padding:15px; margin-top:10px; border-radius:12px; font-size:20px; font-weight:bold; background:#e0e0e0; border:none;">＋ 判定範囲を追加</button>
+        <button class="my-button" style="background:#28a745; margin-top:15px;" onclick="saveConfig()">✅ 本体に保存</button>
+        
+        <div class="share-card">
+            <h3>設定の同期</h3>
+            <button class="my-button sync-button" style="background:#10b981;" onclick="syncToGas()">QRコードの作成</button>
+            <div id="loader" class="loader"></div>
+            <div id="qrcode"></div>
+            <p id="sync-msg" style="font-size:14px; font-weight:bold;"></p>
+            
+            <hr style="margin:20px 0; border:0; border-top:2px dashed #10b981; opacity:0.3;">
+            
+            <button class="my-button sync-button" style="background:#3b82f6;" onclick="scanGasQR()">カメラでQR読込</button>
+            <button class="my-button sync-button" style="background:#6366f1;" onclick="document.getElementById('qr-file-input').click()">写真からQR読込</button>
+            <input type="file" id="qr-file-input" accept="image/*" onchange="readQrFromFile(event)">
+            <canvas id="v-canvas"></canvas>
+        </div>
+        <div style="height:40px;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -104,15 +150,25 @@
         }
         window.onload = loadSettings;
 
+        function saveConfig() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges));
+            alert('本体に保存しました');
+        }
+
+        function addRangeRow() {
+            currentRanges.push({min:0,label:'新規格',audio:'3',colorName:'黒',images:[null,null,null,null]});
+            renderConfigList();
+        }
+
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
-            loader.style.display = 'block'; msg.innerText = "クラウドへ送信中..."; qrDiv.innerHTML = '';
+            loader.style.display = 'block'; msg.innerText = "作成中..."; qrDiv.innerHTML = '';
             const syncId = 'STRW-' + Math.random().toString(36).substring(2, 10);
             try {
                 await fetch(GAS_URL + "?id=" + syncId, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(currentRanges) });
                 loader.style.display = 'none'; qrDiv.innerHTML = '';
                 new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
-                msg.style.color = "#22c55e"; msg.innerText = "✅ 送信完了！ ID: " + syncId;
+                msg.style.color = "#22c55e"; msg.innerText = "✅ 完了！ ID: " + syncId;
             } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ エラー"; }
         }
 
@@ -127,7 +183,7 @@
                     ctx.drawImage(img, 0, 0);
                     const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
                     if (code && code.data.startsWith("STRW-")) processSync(code.data);
-                    else alert("有効な同期QRが見つかりませんでした。");
+                    else alert("有効なQRコードが見つかりません。");
                 };
                 img.src = f.target.result;
             };
@@ -136,15 +192,15 @@
 
         async function processSync(syncId) {
             const msg = document.getElementById('sync-msg');
-            msg.style.color = "#000"; msg.innerText = "☁️ データ取得中...";
+            msg.style.color = "#000"; msg.innerText = "データ取得中...";
             try {
                 const res = await fetch(`${GAS_URL}?id=${syncId}`);
                 const data = await res.json();
-                if (data && data.length > 0 && confirm("設定を同期（上書き）しますか？")) {
+                if (data && data.length > 0 && confirm("設定を上書きしますか？")) {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
                     location.reload();
                 }
-            } catch (err) { alert("取得失敗: IDが古い可能性があります"); }
+            } catch (err) { alert("取得失敗"); }
         }
 
         async function scanGasQR() {
@@ -207,7 +263,7 @@
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('is-active'); imgContainer.style.backgroundColor = ''; }, currentMode === "pre" ? 1200 : 3500);
         }
 
-        let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
+        let bluetoothChar = null, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
                 const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
@@ -218,7 +274,7 @@
                 document.getElementById('status').innerText = "✅ 稼働中";
                 bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
                     const w = parseFloat(new TextDecoder().decode(e.target.value));
-                    currentWeight = w; document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
+                    document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
                     weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
                     if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
                         if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) checkDifference(stableWeight, w); stableWeight = w; }
@@ -239,10 +295,22 @@
                 let slots = '';
                 for(let j=0; j<4; j++){
                     const img = r.images[j];
-                    slots += `<div style="position:relative; width:45px; height:45px; border:1px dashed #ccc; background:#eee;">${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover;"><button onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;">×</button>`:`<label style="cursor:pointer;font-size:12px;color:#007bff;display:flex;align-items:center;justify-content:center;height:100%;">＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
+                    slots += `
+                        <div class="slot">
+                            ${img?`<img src="${img}"><button class="slot-del" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}
+                        </div>`;
                 }
                 const colorOptions = Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('');
-                div.innerHTML = `<div style="display:flex; gap:5px; align-items:center; margin-bottom:5px; flex-wrap:wrap;"><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)" style="width:45px;">g〜 <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value" style="width:50px;"><select onchange="currentRanges[${i}].audio=this.value" style="width:50px;">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select><select onchange="currentRanges[${i}].colorName=this.value" style="width:65px;">${colorOptions}</select><button onclick="currentRanges.splice(${i},1);renderConfigList()" style="margin-left:auto;background:red;color:white;border:none;padding:5px 8px;border-radius:5px;">削</button></div><div style="display:flex;gap:10px;">${slots}</div>`;
+                
+                div.innerHTML = `
+                    <div class="config-inputs">
+                        <input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)">g〜 
+                        <input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value">
+                        <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
+                        <select onchange="currentRanges[${i}].colorName=this.value">${colorOptions}</select>
+                        <button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">削除</button>
+                    </div>
+                    <div class="image-slots">${slots}</div>`;
                 area.appendChild(div);
             });
         }
@@ -261,22 +329,5 @@
             }; reader.readAsDataURL(file);
         }
     </script>
-
-    <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定 V2.11</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
-        <div id="config-list" style="margin-top:10px;"></div>
-        <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',colorName:'黒',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px;">＋ 判定範囲を追加</button>
-        <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
-        <div class="share-card">
-            <h3>☁️ クラウド同期</h3>
-            <button class="my-button" style="background:#10b981; height:50px; font-size:16px;" onclick="syncToGas()">1. 親機：クラウド送信</button>
-            <div id="loader" class="loader"></div><div id="qrcode"></div><p id="sync-msg" style="font-size:11px;"></p>
-            <hr style="margin:10px 0; border:0; border-top:1px dashed #ccc;">
-            <button class="my-button" style="background:#3b82f6; height:50px; font-size:16px;" onclick="scanGasQR()">2-A. カメラでQR読込</button>
-            <button class="my-button" style="background:#6366f1; height:50px; font-size:16px;" onclick="document.getElementById('qr-file-input').click()">2-B. 写真からQR読込</button>
-            <input type="file" id="qr-file-input" accept="image/*" onchange="readQrFromFile(event)">
-            <canvas id="v-canvas"></canvas>
-        </div>
-    </div>
 </body>
 </html>
