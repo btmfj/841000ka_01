@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.05</title>
+    <title>イチゴ選別システム V2.06</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 5px; box-sizing: border-box; width: 100%; }
@@ -20,20 +20,19 @@
         #flash-img-cell { width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; overflow: hidden; }
         #flash-text { font-size: 12vh; font-weight: bold; color: #fff; -webkit-text-stroke: 1.5px #000; margin: 0; }
         
-        /* 画像コンテナ：基本はFlexbox */
-        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 2px; flex-wrap: wrap; }
+        /* 基本コンテナ：1枚・2枚の時にV2.04同様に大きく表示するFlex設定 */
+        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap; }
         
-        /* 田の字（Grid）レイアウト用の特別スタイル */
+        /* 3枚以上の時だけ適用する田の字（Grid） */
         #flash-img-container.grid-layout { 
             display: grid; 
-            grid-template-columns: 1fr 1fr; /* 横2列 */
-            grid-template-rows: 1fr 1fr;    /* 縦2行 */
-            gap: 4px; /* 枠線代わりの隙間 */
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;    
+            gap: 4px; 
             padding: 4px;
             box-sizing: border-box;
         }
 
-        /* 画像自体のスタイル：高画質・枠なし */
         .flash-img-item { 
             object-fit: contain; 
             border: none; 
@@ -42,17 +41,8 @@
             image-rendering: auto; 
         }
         
-        /* Grid配置用のスタイル */
-        .grid-item {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            /* 背景を少し暗くして空白枠を分かりやすくする（お好みで削除可） */
-            /* background-color: rgba(255,255,255,0.1); */ 
-            overflow: hidden;
-        }
+        /* Grid用のアイテム枠 */
+        .grid-item { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; }
 
         .btn-container { width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .my-button { width: 100%; height: 45px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; color: white; margin: 2px 0; cursor: pointer; }
@@ -73,7 +63,7 @@
 <body>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.05</div>
+            <div id="app-title">はよ選果 V2.06</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -127,15 +117,10 @@
                     headers: { "Content-Type": "text/plain" },
                     body: JSON.stringify(currentRanges)
                 });
-                loader.style.display = 'none';
-                qrDiv.innerHTML = '';
+                loader.style.display = 'none'; qrDiv.innerHTML = '';
                 new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
-                msg.style.color = "#22c55e";
-                msg.innerText = "✅ 送信完了！(専用フォルダへ保存)";
-            } catch (err) {
-                loader.style.display = 'none';
-                msg.innerText = "❌ エラー: " + err;
-            }
+                msg.style.color = "#22c55e"; msg.innerText = "✅ 送信完了！";
+            } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ エラー: " + err; }
         }
 
         async function scanGasQR() {
@@ -154,8 +139,8 @@
                             fetch(`${GAS_URL}?id=${code.data}`).then(res => res.json()).then(data => {
                                 if (data && data.length > 0 && confirm("設定を同期しますか？")) {
                                     localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
-                                } else { alert("準備中... 3秒待って再試行してください。"); }
-                            }).catch(() => alert("読込失敗"));
+                                }
+                            });
                             return; 
                         }
                     }
@@ -175,7 +160,7 @@
             }
         }
 
-        // --- 判定フラッシュ表示ロジック (V2.05 田の字レイアウト完全対応版) ---
+        // --- 条件付き田の字レイアウト (V2.06) ---
         function showFlash(text, color, tColor, imgArray) {
             const overlay = document.getElementById('flash-overlay'), 
                   fText = document.getElementById('flash-text'), 
@@ -184,71 +169,46 @@
             fText.innerText = text; 
             overlay.style.backgroundColor = color; 
             imgContainer.innerHTML = '';
-            
-            // クラスをリセット
             imgContainer.className = ''; 
 
-            // 有効な画像（nullでないもの）の枚数を数える
-            const activeImagesCount = imgArray.filter(src => src !== null).length;
+            // 画像が登録されている数（nullでないもの）
+            const activeImages = imgArray.filter(src => src !== null);
+            const activeCount = activeImages.length;
 
-            if (currentMode === "direct" && imgArray.length > 0) {
-                
-                if (imgArray.length >= 3) {
-                    // --- 3枚以上登録されている場合は「田の字（Grid）」モード ---
+            if (currentMode === "direct" && activeCount > 0) {
+                // 画像が3枚以上の時だけ「田の字(Grid)」モード
+                if (imgArray.length >= 3 && activeCount >= 3) {
                     imgContainer.classList.add('grid-layout');
-
-                    // 4つの固定枠を作成（左上、右上、左下、右下）
                     for (let i = 0; i < 4; i++) {
                         const gridItem = document.createElement('div');
                         gridItem.className = 'grid-item';
-                        
-                        // 画像が登録されている場合のみimgタグを作成
                         if (imgArray[i]) {
                             const img = document.createElement('img');
                             img.src = imgArray[i];
                             img.className = 'flash-img-item';
-                            // Grid内では枠いっぱい、かつアスペクト比維持
-                            img.style.maxWidth = '100%';
-                            img.style.maxHeight = '100%';
+                            img.style.maxWidth = '100%'; img.style.maxHeight = '100%';
                             gridItem.appendChild(img);
-                        } else {
-                            // 画像がない枠は空白（grid-itemの背景が出る）
                         }
                         imgContainer.appendChild(gridItem);
                     }
                 } else {
-                    // --- 1枚または2枚の場合は従来のFlexboxモード ---
-                    imgArray.forEach(src => {
-                        if (!src) return; // nullは飛ばす
-
+                    // 1枚・2枚の時は V2.04 同様の Flexbox モードで最大表示
+                    activeImages.forEach(src => {
                         const img = document.createElement('img');
                         img.src = src;
                         img.className = 'flash-img-item';
-
-                        if (activeImagesCount === 1) {
-                            // 1枚：完璧な全画面
-                            img.style.width = '100%'; 
-                            img.style.height = '100%';
-                            img.style.maxWidth = '100%';
-                            img.style.maxHeight = '100%';
-                        } else if (activeImagesCount === 2) {
-                            // 2枚：横並び（スマホ縦でも横でもフィット）
-                            img.style.maxWidth = '49%'; 
-                            img.style.maxHeight = '98%';
+                        if (activeCount === 1) {
+                            img.style.width = '100%'; img.style.height = '100%';
+                        } else {
+                            img.style.maxWidth = '49%'; img.style.maxHeight = '98%';
                         }
                         imgContainer.appendChild(img);
                     });
                 }
             }
-            
-            overlay.style.display = 'flex'; 
-            overlay.classList.add('is-active');
-            
+            overlay.style.display = 'flex'; overlay.classList.add('is-active');
             if (window.flashTimer) clearTimeout(window.flashTimer);
-            window.flashTimer = setTimeout(() => { 
-                overlay.style.display = 'none'; 
-                overlay.classList.remove('is-active'); 
-            }, currentMode === "pre" ? 1200 : 3500);
+            window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('is-active'); }, currentMode === "pre" ? 1200 : 3500);
         }
 
         let bluetoothChar = null, currentWeight = 0, stableWeight = 0, weightHistory = [];
@@ -296,7 +256,7 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
-                    const maxSide = 1024; // iPad対応高画質
+                    const maxSide = 1024;
                     const sc = Math.min(maxSide / img.width, maxSide / img.height, 1.0);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
@@ -308,17 +268,14 @@
     </script>
 
     <div id="settings-modal" class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.05</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;"><b>設定・画像同期 V2.06</b><button onclick="document.getElementById('settings-modal').style.display='none'" style="font-size:24px; border:none; background:none;">✕</button></div>
         <div id="config-list" style="margin-top:10px;"></div>
         <button onclick="currentRanges.push({min:0,label:'新規格',audio:'3',images:[null,null,null,null]});renderConfigList()" style="width:100%; padding:10px; margin-top:5px; border-radius:8px;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:5px;" onclick="localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); alert('本体に保存しました');">✅ 本体に保存</button>
         <div class="share-card">
             <h3>☁️ 高画質画像クラウド同期</h3>
-            <p style="font-size:10px;">Googleドライブの専用フォルダへ保存します</p>
             <button class="my-button" style="background:#10b981;" onclick="syncToGas()">1. 親機：画像をクラウド送信</button>
-            <div id="loader" class="loader"></div>
-            <div id="qrcode"></div>
-            <p id="sync-msg" style="font-size:11px;"></p>
+            <div id="loader" class="loader"></div><div id="qrcode"></div><p id="sync-msg" style="font-size:11px;"></p>
             <hr style="margin:15px 0; border:0; border-top:1px dashed #ccc;">
             <button class="my-button" style="background:#3b82f6;" onclick="scanGasQR()">2. 子機：画像をクラウド読込</button>
             <canvas id="v-canvas"></canvas>
