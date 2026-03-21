@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.04</title>
+    <title>イチゴ選別システム V3.05</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -70,7 +70,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.04</div>
+            <div id="app-title">はよ選果 V3.05</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -128,36 +128,32 @@
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
         const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
 
-        // === スリープ防止ロジック V3.04 (旧OS/Bluefy対応版) ===
+        // === スリープ防止ロジック V3.05 (iPhone 7/Bluefy最終手段) ===
         let wakeLock = null;
-        let locationTimer = null;
+        let preventTimer = null;
 
         async function activateNoSleep() {
-            // 1. Screen Wake Lock API (iOS 16.4+, Modern Browser)
+            // 手法1: Wake Lock API (Modern iOS)
             if ('wakeLock' in navigator) {
                 try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
             }
 
-            // 2. Location Hack (iPhone 7 / Bluefy用強制回避)
-            // 1分ごとに位置情報をリクエストし、システムに「活動中」と思わせる
-            if ("geolocation" in navigator) {
-                if (locationTimer) clearInterval(locationTimer);
-                locationTimer = setInterval(() => {
-                    navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: false });
-                }, 50000);
-            }
+            // 手法2: ページ内擬似リロード (iPhone 7 / iOS 15以下 / Bluefyに最も有効)
+            // 25秒ごとに「ページ遷移」のフリをさせてアイドル時間をリセット
+            if (preventTimer) clearInterval(preventTimer);
+            preventTimer = setInterval(() => {
+                const currentHref = window.location.href;
+                window.location.href = "#prevent-sleep-" + Date.now(); // URL末尾を少し変えて遷移扱いにする
+                window.setTimeout(() => { window.stop(); }, 10);      // 即停止してページを維持
+            }, 25000);
 
-            // 3. Video Loop Hack (iOS 15以下バックアップ)
+            // 手法3: Video Loop
             const video = document.getElementById('no-sleep-video');
             if (video.src === "") {
                 video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC43Ni4xMDA=";
             }
-            video.play().catch(e => console.log(e));
+            video.play().catch(e => {});
         }
-
-        document.addEventListener('visibilitychange', async () => {
-            if (document.visibilityState === 'visible') activateNoSleep();
-        });
 
         // === 既存機能（V3.01〜） ===
         let voices = [];
@@ -306,7 +302,7 @@
 
         let bluetoothChar = null, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
-            // 強制スリープ防止アクティベート
+            // スリープ防止を全投入
             await activateNoSleep();
             
             try {
