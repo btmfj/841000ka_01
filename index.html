@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.11</title>
+    <title>イチゴ選別システム V3.12</title>
     <style>
+        /* スタイルはV3.11を完全継承 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -73,7 +74,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.11</div>
+            <div id="app-title">はよ選果 V3.12</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -129,7 +130,6 @@
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
         
-        // 更新されたオーディオリスト
         const availableAudios = [
             "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
             "2L", "2L大", "2L小", "3L", "L", "L大", "L小", "M", "M大", "M小", "S", "S大", "S小",
@@ -138,10 +138,7 @@
         
         const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
 
-        let wakeLock = null;
-        let pixelTimer = null;
-        let audioTimer = null;
-        let locTimer = null;
+        let wakeLock = null, pixelTimer = null, audioTimer = null, locTimer = null;
         const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
 
         async function activateNoSleep() {
@@ -180,7 +177,6 @@
             sounds = {};
             currentRanges.forEach(r => {
                 if ((r.audioMode === "mp3" || !r.audioMode) && r.audio) {
-                    // 日本語ファイル名対応のためエンコード
                     const encodedName = encodeURIComponent(r.audio);
                     if(!sounds[r.audio]) sounds[r.audio] = new Audio("./" + encodedName + ".mp3");
                 }
@@ -345,8 +341,8 @@
                 const colorOptions = Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('');
                 div.innerHTML = `
                     <div class="config-inputs">
-                        <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
-                        <div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" onchange="currentRanges[${i}].label=this.value"></div>
+                        <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" oninput="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
+                        <div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" oninput="currentRanges[${i}].label=this.value"></div>
                         <div class="input-group">
                             <span class="guide-label">音声：</span>
                             <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
@@ -354,9 +350,9 @@
                                 <option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option>
                             </select>
                             ${(r.audioMode === "tts") ? `
-                                <input type="text" value="${r.ttsText || ''}" placeholder="読上文" style="width:70px;" onchange="currentRanges[${i}].ttsText=this.value">
-                                <select onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
-                                <button onclick="speak('${r.ttsText || r.label}', '${r.ttsVoice || 'female'}')" style="height:45px; width:45px; border-radius:8px; border:1px solid #999; cursor:pointer;">▶</button>
+                                <input type="text" id="ttsText-${i}" value="${r.ttsText || ''}" placeholder="読上文" style="width:70px;" oninput="currentRanges[${i}].ttsText=this.value">
+                                <select id="ttsVoice-${i}" onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
+                                <button onclick="speak(document.getElementById('ttsText-${i}').value || currentRanges[${i}].label, document.getElementById('ttsVoice-${i}').value)" style="height:45px; width:45px; border-radius:8px; border:1px solid #999; cursor:pointer;">▶</button>
                             ` : `
                                 <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
                             `}
