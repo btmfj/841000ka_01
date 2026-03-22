@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.11</title>
+    <title>イチゴ選別システム V3.12</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -50,12 +50,6 @@
         .config-inputs input[type="number"] { width: 70px; }
         .config-inputs input[type="text"] { width: 90px; }
         .config-inputs select { min-width: 70px; }
-        
-        /* ピッチ・速度コントロールの装飾 */
-        .control-box { display: flex; align-items: center; gap: 4px; background: #eee; padding: 4px 8px; border-radius: 8px; margin-top: 4px; }
-        .ctrl-btn { width: 38px; height: 38px; border-radius: 6px; border: 1px solid #999; background: #fff; font-size: 20px; font-weight: bold; color: #d63031; }
-        .ctrl-val { min-width: 60px; font-size: 13px; font-weight: bold; text-align: center; }
-
         .image-section { margin-top: 10px; }
         .image-slots { display: flex; gap: 12px; justify-content: flex-start; margin-top: 5px; }
         .slot { position: relative; width: 65px; height: 65px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; }
@@ -63,10 +57,6 @@
         .slot label { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 24px; color: #007bff; cursor: pointer; }
         .slot-del { position: absolute; top: -8px; right: -8px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .del-row-btn { background: #ff4757; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 10px; width: 100%; }
-        
-        .preview-btn { background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 10px; width: 100%; flex: 1; }
-        .action-row { display: flex; gap: 10px; }
-
         .share-card { background: #f0fdf4; border: 3px solid #10b981; border-radius: 20px; padding: 20px; margin-top: 30px; text-align: center; }
         .share-card h3 { font-size: 22px; margin-top: 0; color: #065f46; }
         .sync-button { height: 55px; font-size: 18px; margin: 8px 0; }
@@ -83,7 +73,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.11</div>
+            <div id="app-title">はよ選果 V3.12</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -132,13 +122,13 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
     <script>
-        const STORAGE_KEY = 'strawberry_config_v311'; 
+        const STORAGE_KEY = 'strawberry_config_v106'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbz9MbewMWAiRx2pSsu7usoloHm1guK32Woe_9XNNU_r6nTm8VlNFcOQ4h3VTnQFh5g/exec";
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
-        const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS", "2L", "L", "M", "S", "DX", "G"];
+        const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
         const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
 
         let wakeLock = null, pixelTimer = null, audioTimer = null, locTimer = null;
@@ -158,11 +148,17 @@
             if (video.src === "") { video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC43Ni4xMDA="; }
             video.play().catch(e => {});
         }
+
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') activateNoSleep(); });
+
+        let voices = [];
+        function loadVoices() { voices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja')); }
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", audioMode: "mp3", ttsText: "ニエル", ttsRate: 1.2, ttsPitch: 1.0, colorName: "青", images: [null, null, null, null] }];
+            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", colorName: "青", images: [null, null, null, null] }];
             currentRanges.sort((a, b) => b.min - a.min);
             refreshSounds();
         }
@@ -178,14 +174,106 @@
             sounds["start"] = new Audio("./start.mp3");
         }
 
-        function speak(text, rate = 1.2, pitch = 1.0) {
+        function playPreview(i) {
+            const r = currentRanges[i];
+            if (r.audioMode === "tts") {
+                speak(r.ttsText || r.label, r.ttsVoice);
+            } else {
+                if (sounds[r.audio]) {
+                    sounds[r.audio].currentTime = 0;
+                    sounds[r.audio].play();
+                } else {
+                    const tempAudio = new Audio("./" + r.audio.toLowerCase() + ".mp3");
+                    tempAudio.play().catch(e => console.log("Audio play failed"));
+                }
+            }
+        }
+
+        function speak(text, gender) {
             if (!text) return;
             window.speechSynthesis.cancel();
             const uttr = new SpeechSynthesisUtterance(text);
-            uttr.lang = 'ja-JP';
-            uttr.rate = rate;
-            uttr.pitch = pitch;
+            uttr.rate = 1.2;
+            if (voices.length > 0) {
+                const target = gender === "male" ? ["Male", "Otoya", "Ichiro"] : ["Female", "Kyoko", "Hanako"];
+                uttr.voice = voices.find(v => target.some(n => v.name.includes(n))) || voices[0];
+            }
             window.speechSynthesis.speak(uttr);
+        }
+
+        function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('本体に保存しました'); }
+        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
+
+        async function syncToGas() {
+            const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
+            loader.style.display = 'block'; msg.innerText = "作成中..."; qrDiv.innerHTML = '';
+            const syncId = 'STRW-' + Math.random().toString(36).substring(2, 10);
+            try {
+                await fetch(GAS_URL + "?id=" + syncId, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(currentRanges) });
+                loader.style.display = 'none'; qrDiv.innerHTML = '';
+                new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
+                msg.style.color = "#22c55e"; msg.innerText = "✅ 完了！ ID: " + syncId;
+            } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ エラー"; }
+        }
+
+        async function readQrFromFile(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
+                    canvas.width = img.width; canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+                    if (code && code.data.startsWith("STRW-")) processSync(code.data);
+                    else alert("有効なQRコードが見つかりません。");
+                };
+                img.src = f.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function processSync(syncId) {
+            const msg = document.getElementById('sync-msg');
+            msg.style.color = "#000"; msg.innerText = "データ取得中...";
+            try {
+                const res = await fetch(`${GAS_URL}?id=${syncId}`);
+                const data = await res.json();
+                if (data && data.length > 0 && confirm("設定を上書きしますか？")) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
+                }
+            } catch (err) { alert("取得失敗"); }
+        }
+
+        async function scanGasQR() {
+            try {
+                const video = document.createElement("video"), canvas = document.getElementById("v-canvas"), ctx = canvas.getContext("2d");
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
+                canvas.style.display = "block";
+                const tick = async () => {
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        canvas.height = video.videoHeight; canvas.width = video.videoWidth;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+                        if (code && code.data.startsWith("STRW-")) { stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none"; processSync(code.data); return; }
+                    }
+                    requestAnimationFrame(tick);
+                };
+                requestAnimationFrame(tick);
+            } catch (err) { alert("カメラ起動失敗"); }
+        }
+
+        function checkDifference(oldW, newW) {
+            const diff = oldW - newW; if (diff < 5.0) return;
+            document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
+            const match = currentRanges.find(r => diff >= r.min);
+            if (match) { 
+                showFlash(match.label, match.colorName || "黒", match.images || []); 
+                if (match.audioMode === "tts") { speak(match.ttsText || match.label, match.ttsVoice); } 
+                else { if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); } }
+            }
         }
 
         function showFlash(text, colorName, imgArray) {
@@ -219,13 +307,33 @@
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('is-active'); imgContainer.style.backgroundColor = ''; }, currentMode === "pre" ? 1200 : 3500);
         }
 
-        function testPreview(idx) {
-            const r = currentRanges[idx];
-            showFlash(r.label, r.colorName || "黒", r.images || []);
-            if (r.audioMode === "tts") speak(r.ttsText || r.label, r.ttsRate || 1.2, r.ttsPitch || 1.0);
-            else if (sounds[r.audio]) { sounds[r.audio].currentTime = 0; sounds[r.audio].play(); }
-        }
+        let bluetoothChar = null, stableWeight = 0, weightHistory = [];
+        document.getElementById('connectBtn').onclick = async () => {
+            await activateNoSleep();
+            try {
+                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
+                await bluetoothChar.startNotifications();
+                document.getElementById('status').innerText = "✅ 稼働中";
+                if(sounds["start"]) sounds["start"].play();
+                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
+                    const w = parseFloat(new TextDecoder().decode(e.target.value));
+                    document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
+                    weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
+                    if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
+                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) checkDifference(stableWeight, w); stableWeight = w; }
+                    }
+                });
+            } catch (err) { alert("秤が見つかりません"); }
+        };
 
+        document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
+        document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
+        document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
+        document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
+        
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
@@ -243,94 +351,24 @@
                         <div class="input-group">
                             <span class="guide-label">音声：</span>
                             <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
-                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>MP3</option>
+                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>登録音声</option>
                                 <option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option>
                             </select>
                             ${(r.audioMode === "tts") ? `
                                 <input type="text" value="${r.ttsText || ''}" placeholder="読上文" style="width:70px;" onchange="currentRanges[${i}].ttsText=this.value">
-                                <div class="control-box">
-                                    <button class="ctrl-btn" onclick="currentRanges[${i}].ttsRate=Math.max(0.5,Math.round((currentRanges[${i}].ttsRate||1.2)-0.1,1));renderConfigList()">－</button>
-                                    <span class="ctrl-val">${(r.ttsRate||1.2).toFixed(1)}速</span>
-                                    <button class="ctrl-btn" onclick="currentRanges[${i}].ttsRate=Math.min(2.0,Math.round((currentRanges[${i}].ttsRate||1.2)+0.1,1));renderConfigList()">＋</button>
-                                </div>
-                                <div class="control-box">
-                                    <button class="ctrl-btn" onclick="currentRanges[${i}].ttsPitch=Math.max(0.1,Math.round((currentRanges[${i}].ttsPitch||1.0)-0.1,1));renderConfigList()">－</button>
-                                    <span class="ctrl-val">高${(r.ttsPitch||1.0).toFixed(1)}</span>
-                                    <button class="ctrl-btn" onclick="currentRanges[${i}].ttsPitch=Math.min(2.0,Math.round((currentRanges[${i}].ttsPitch||1.0)+0.1,1));renderConfigList()">＋</button>
-                                </div>
+                                <select onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
                             ` : `
                                 <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
                             `}
+                            <button onclick="playPreview(${i})" style="height:45px; width:45px; border-radius:8px; border:1px solid #999; cursor:pointer; background:#fff; font-size:18px;">▶</button>
                         </div>
                         <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${colorOptions}</select></div>
                     </div>
                     <div class="image-section"><span class="guide-label">画像：</span><div class="image-slots">${slots}</div></div>
-                    <div class="action-row">
-                        <button class="preview-btn" onclick="testPreview(${i})">👁 プレビュー</button>
-                        <button class="del-row-btn" style="flex:1" onclick="currentRanges.splice(${i},1);renderConfigList()">判定（${r.label}）を削除</button>
-                    </div>`;
+                    <button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">判定（${r.label}）を削除する</button>`;
                 area.appendChild(div);
             });
         }
-
-        async function syncToGas() {
-            const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
-            loader.style.display = 'block'; msg.innerText = "作成中..."; qrDiv.innerHTML = '';
-            const syncId = 'STRW-' + Math.random().toString(36).substring(2, 10);
-            try {
-                await fetch(GAS_URL + "?id=" + syncId, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(currentRanges) });
-                loader.style.display = 'none';
-                new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
-                msg.style.color = "#22c55e"; msg.innerText = "✅ 完了！ ID: " + syncId;
-            } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ エラー"; }
-        }
-
-        async function processSync(syncId) {
-            try {
-                const res = await fetch(`${GAS_URL}?id=${syncId}`);
-                const data = await res.json();
-                if (data && data.length > 0 && confirm("設定を上書きしますか？")) {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); location.reload();
-                }
-            } catch (err) { alert("取得失敗"); }
-        }
-
-        async function scanGasQR() {
-            try {
-                const video = document.createElement("video"), canvas = document.getElementById("v-canvas"), ctx = canvas.getContext("2d");
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
-                canvas.style.display = "block";
-                const tick = () => {
-                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        canvas.height = video.videoHeight; canvas.width = video.videoWidth;
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-                        if (code && code.data.startsWith("STRW-")) { stream.getTracks().forEach(t => t.stop()); canvas.style.display = "none"; processSync(code.data); return; }
-                    }
-                    requestAnimationFrame(tick);
-                };
-                requestAnimationFrame(tick);
-            } catch (err) { alert("カメラ起動失敗"); }
-        }
-
-        function readQrFromFile(e) {
-            const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (f) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
-                    canvas.width = img.width; canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-                    if (code && code.data.startsWith("STRW-")) processSync(code.data); else alert("QRが見つかりません");
-                };
-                img.src = f.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
         function addImg(e, i, sIdx) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader(); reader.onload = (f) => {
@@ -344,49 +382,6 @@
                 };
             }; reader.readAsDataURL(file);
         }
-
-        let bluetoothChar = null, stableWeight = 0, weightHistory = [];
-        document.getElementById('connectBtn').onclick = async () => {
-            await activateNoSleep();
-            try {
-                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
-                await bluetoothChar.startNotifications();
-                document.getElementById('status').innerText = "✅ 稼働中";
-                if(sounds["start"]) sounds["start"].play();
-                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
-                    const w = parseFloat(new TextDecoder().decode(e.target.value));
-                    document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
-                    weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
-                    if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
-                        if (Math.abs(stableWeight - w) > 0.5) { 
-                            if (stableWeight > w) {
-                                const diff = stableWeight - w;
-                                if (diff >= 5.0) {
-                                    document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
-                                    const match = currentRanges.find(r => diff >= r.min);
-                                    if (match) {
-                                        showFlash(match.label, match.colorName, match.images);
-                                        if (match.audioMode === "tts") speak(match.ttsText || match.label, match.ttsRate, match.ttsPitch);
-                                        else if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); }
-                                    }
-                                }
-                            }
-                            stableWeight = w; 
-                        }
-                    }
-                });
-            } catch (err) { alert("秤が見つかりません"); }
-        };
-
-        function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('本体に保存しました'); }
-        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsRate:1.2,ttsPitch:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
-        document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
-        document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
-        document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
-        document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
     </script>
 </body>
 </html>
