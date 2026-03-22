@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.05</title>
+    <title>イチゴ選別システム V1.06</title>
     <style>
         /* 基本スタイル */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
@@ -21,7 +21,6 @@
         #flash-img-cell { width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; overflow: hidden; }
         #flash-text { font-size: 14vh; font-weight: bold; color: #fff; -webkit-text-stroke: 2px #000; margin: 0; }
         #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap; }
-        #flash-img-container.grid-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; box-sizing: border-box; }
         .flash-img-item { object-fit: contain; border: none; box-sizing: border-box; image-rendering: auto; max-width: 100%; max-height: 100%; }
         
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
@@ -65,7 +64,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.05</div>
+            <div id="app-title">はよ選果 V1.06</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -147,7 +146,6 @@
         function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('本体に保存しました'); }
         function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsPitch:1.0,ttsRate:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
 
-        // スピード調整 (delta: +0.1 or -0.1)
         function adjustSpeed(idx, delta) {
             const slider = document.getElementById(`speedSlider-${idx}`);
             let newVal = Math.round((parseFloat(slider.value) + delta) * 10) / 10;
@@ -157,11 +155,11 @@
             currentRanges[idx].ttsRate = newVal;
         }
 
-        // ピッチ調整 (delta: +0.1 or -0.1)
         function adjustPitch(idx, delta) {
             const slider = document.getElementById(`pitchSlider-${idx}`);
             let newVal = Math.round((parseFloat(slider.value) + delta) * 10) / 10;
-            newVal = Math.min(2.0, Math.max(0.5, newVal));
+            // 下限を 0.1 に変更
+            newVal = Math.min(2.0, Math.max(0.1, newVal));
             slider.value = newVal;
             document.getElementById(`pitchVal-${idx}`).innerText = "高さ" + newVal.toFixed(1);
             currentRanges[idx].ttsPitch = newVal;
@@ -194,7 +192,7 @@
                                 
                                 <div class="speed-control-box" style="background: #fff0f0;">
                                     <button class="speed-btn" onclick="adjustPitch(${i}, -0.1)">－</button>
-                                    <input type="range" id="pitchSlider-${i}" min="0.5" max="2.0" step="0.1" value="${r.ttsPitch || 1.0}" oninput="currentRanges[${i}].ttsPitch=parseFloat(this.value); document.getElementById('pitchVal-${i}').innerText='高さ'+parseFloat(this.value).toFixed(1)">
+                                    <input type="range" id="pitchSlider-${i}" min="0.1" max="2.0" step="0.1" value="${r.ttsPitch || 1.0}" oninput="currentRanges[${i}].ttsPitch=parseFloat(this.value); document.getElementById('pitchVal-${i}').innerText='高さ'+parseFloat(this.value).toFixed(1)">
                                     <button class="speed-btn" onclick="adjustPitch(${i}, 0.1)">＋</button>
                                     <span class="speed-val" id="pitchVal-${i}">高さ${(r.ttsPitch || 1.0).toFixed(1)}</span>
                                 </div>
@@ -234,7 +232,6 @@
             }; reader.readAsDataURL(file);
         }
 
-        // Bluetooth/秤 制御ロジック
         let bluetoothChar = null, stableWeight = 0, weightHistory = [];
         document.getElementById('connectBtn').onclick = async () => {
             try {
