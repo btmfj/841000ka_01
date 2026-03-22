@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.12</title>
+    <title>イチゴ選別システム V3.10</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -28,6 +28,7 @@
         .grid-item.bl { justify-content: flex-end; align-items: flex-start; }
         .grid-item.br { justify-content: flex-start; align-items: flex-start; }
 
+        /* スリープ阻止用隠し要素 */
         #keep-alive-pixel { position: absolute; top: 0; left: 0; width: 1px; height: 1px; background: rgba(0,0,0,0.01); z-index: 1000; pointer-events: none; }
 
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
@@ -73,7 +74,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.12</div>
+            <div id="app-title">はよ選果 V3.10</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -131,26 +132,43 @@
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2LD", "2LS", "LD", "LS", "MD", "MS", "SD", "SS"];
         const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
 
-        let wakeLock = null, pixelTimer = null, audioTimer = null, locTimer = null;
+        // === スリープ防止全部入りロジック V3.10 ===
+        let wakeLock = null;
+        let pixelTimer = null;
+        let audioTimer = null;
+        let locTimer = null;
         const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
 
         async function activateNoSleep() {
-            if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+            // 1. Wake Lock API (iOS 16.4+)
+            if ('wakeLock' in navigator) {
+                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+            }
+            // 2. 1pxアニメーション (OSへの「描画中」アピール)
             const pixel = document.getElementById('keep-alive-pixel');
             if (pixelTimer) cancelAnimationFrame(pixelTimer);
-            function animatePixel() { pixel.style.top = (Math.random() * 2) + "px"; pixelTimer = requestAnimationFrame(animatePixel); }
+            function animatePixel() {
+                pixel.style.top = (Math.random() * 2) + "px";
+                pixelTimer = requestAnimationFrame(animatePixel);
+            }
             animatePixel();
+            // 3. 無音定期再生 (オーディオセッション維持)
             if (audioTimer) clearInterval(audioTimer);
             audioTimer = setInterval(() => { silentAudio.play().catch(e => {}); }, 15000);
+            // 4. 位置情報リクエスト (旧iOSへの「活動中」アピール)
             if (locTimer) clearInterval(locTimer);
             locTimer = setInterval(() => { navigator.geolocation.getCurrentPosition(()=>{},()=>{},{enableHighAccuracy:false}); }, 45000);
+            // 5. 無音ビデオ再生
             const video = document.getElementById('no-sleep-video');
-            if (video.src === "") { video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC43Ni4xMDA="; }
+            if (video.src === "") {
+                video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC43Ni4xMDA=";
+            }
             video.play().catch(e => {});
         }
 
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') activateNoSleep(); });
 
+        // === イチゴ選別基本ロジック ===
         let voices = [];
         function loadVoices() { voices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja')); }
         window.speechSynthesis.onvoiceschanged = loadVoices;
@@ -172,21 +190,6 @@
                 }
             });
             sounds["start"] = new Audio("./start.mp3");
-        }
-
-        function playPreview(i) {
-            const r = currentRanges[i];
-            if (r.audioMode === "tts") {
-                speak(r.ttsText || r.label, r.ttsVoice);
-            } else {
-                if (sounds[r.audio]) {
-                    sounds[r.audio].currentTime = 0;
-                    sounds[r.audio].play();
-                } else {
-                    const tempAudio = new Audio("./" + r.audio.toLowerCase() + ".mp3");
-                    tempAudio.play().catch(e => console.log("Audio play failed"));
-                }
-            }
         }
 
         function speak(text, gender) {
@@ -351,16 +354,16 @@
                         <div class="input-group">
                             <span class="guide-label">音声：</span>
                             <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
-                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>登録音声</option>
+                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>MP3</option>
                                 <option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option>
                             </select>
                             ${(r.audioMode === "tts") ? `
                                 <input type="text" value="${r.ttsText || ''}" placeholder="読上文" style="width:70px;" onchange="currentRanges[${i}].ttsText=this.value">
                                 <select onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
+                                <button onclick="speak('${r.ttsText || r.label}', '${r.ttsVoice || 'female'}')" style="height:45px; width:45px; border-radius:8px; border:1px solid #999; cursor:pointer;">▶</button>
                             ` : `
                                 <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
                             `}
-                            <button onclick="playPreview(${i})" style="height:45px; width:45px; border-radius:8px; border:1px solid #999; cursor:pointer; background:#fff; font-size:18px;">▶</button>
                         </div>
                         <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${colorOptions}</select></div>
                     </div>
@@ -385,3 +388,4 @@
     </script>
 </body>
 </html>
+
