@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.06</title>
+    <title>イチゴ選別システム V1.08</title>
     <style>
+        /* スタイルは維持（容量の関係で一部省略しますが、以前のものと同じです） */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -13,7 +14,6 @@
         #weight { font-size: 12vh; font-weight: bold; color: #00b300; line-height: 1; margin: 5px 0; letter-spacing: -2px; }
         #weight span { font-size: 4vh; color: #000; margin-left: 5px; }
         #diff-display { font-size: 4.5vh; color: #ff4757; height: 5vh; font-weight: bold; margin-bottom: 10px; }
-        
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; }
         #flash-overlay.is-active { display: flex; flex-direction: column; }
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 20%; flex-shrink: 0; }
@@ -27,9 +27,7 @@
         .grid-item.tr { justify-content: flex-start; align-items: flex-end; }
         .grid-item.bl { justify-content: flex-end; align-items: flex-start; }
         .grid-item.br { justify-content: flex-start; align-items: flex-start; }
-
         #keep-alive-pixel { position: absolute; top: 0; left: 0; width: 1px; height: 1px; background: rgba(0,0,0,0.01); z-index: 1000; pointer-events: none; }
-
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
         #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
@@ -38,7 +36,6 @@
         .mode-btn { flex: 1; height: 55px; border-radius: 12px; border: 3px solid #d63031; background: #fff; color: #d63031; font-weight: bold; font-size: 18px; }
         .mode-btn.active { background: #d63031; color: #fff; }
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
-
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 15px; box-sizing: border-box; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .modal-title { font-size: 26px; font-weight: bold; }
@@ -50,22 +47,18 @@
         .config-inputs input[type="number"] { width: 70px; }
         .config-inputs input[type="text"] { width: 90px; }
         .config-inputs select { min-width: 70px; }
-        
         .speed-control-box { display: flex; align-items: center; gap: 8px; background: #eee; padding: 5px 10px; border-radius: 10px; margin-top: 5px; width: 100%; box-sizing: border-box; }
         .speed-btn { width: 45px; height: 45px; border-radius: 8px; border: 1px solid #999; background: #fff; font-size: 24px; font-weight: bold; cursor: pointer; color: #d63031; display: flex; align-items: center; justify-content: center; }
         input[type="range"] { flex: 1; height: 10px; cursor: pointer; }
         .speed-val { min-width: 60px; font-size: 14px; font-weight: bold; color: #333; text-align: center; }
-
         .image-slots { display: flex; gap: 12px; justify-content: flex-start; margin-top: 5px; }
         .slot { position: relative; width: 65px; height: 65px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; }
         .slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
         .slot label { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 24px; color: #007bff; cursor: pointer; }
         .slot-del { position: absolute; top: -8px; right: -8px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; font-weight: bold; }
-        
         .action-row { display: flex; gap: 10px; margin-top: 10px; }
         .del-row-btn { flex: 1; background: #ff4757; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
         .preview-row-btn { flex: 1; background: #28a745; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
-        
         .share-card { background: #f0fdf4; border: 3px solid #10b981; border-radius: 20px; padding: 20px; margin-top: 30px; text-align: center; }
         .sync-button { height: 55px; font-size: 18px; margin: 8px 0; }
         #qrcode { margin: 15px auto; display: flex; justify-content: center; background: white; padding: 10px; min-height: 160px; border: 1px solid #ddd; }
@@ -81,7 +74,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.06</div>
+            <div id="app-title">はよ選果 V1.08</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -112,7 +105,7 @@
         <button onclick="addRangeRow()" style="width:100%; padding:15px; margin-top:10px; border-radius:12px; font-size:20px; font-weight:bold; background:#e0e0e0; border:none; cursor:pointer;">＋ 判定範囲を追加</button>
         <button class="my-button" style="background:#28a745; margin-top:15px;" onclick="saveConfig()">✅ 本体に保存</button>
         <div class="share-card">
-            <h3>設定の同期</h3>
+            <h3>設定の同期（分割転送モード）</h3>
             <button class="my-button sync-button" style="background:#10b981;" onclick="syncToGas()">QRコードの作成</button>
             <div id="loader" class="loader"></div>
             <div id="qrcode"></div>
@@ -133,7 +126,7 @@
         const STORAGE_KEY = 'strawberry_config_v111'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzCssbf_oaGuqcoOkfpjEe_BKGTLX-ZO8lp7A-6m7ffALbV3LBWCJAf5u4Ik09jvN18/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzoXz3vQvQOg6TIR0cshy5N6ysqWC-AODRzlCmN2Cr-WPK3hgOr3zCVPZ_kMgNqYu_U/exec";
         
         let currentRanges = [], sounds = {}, currentMode = "pre";
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2L", "2L大", "2L小", "3L", "L", "L大", "L小", "M", "M大", "M小", "S", "S大", "S小", "a", "aa", "b", "dx", "ex", "g"];
@@ -207,10 +200,11 @@
 
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
-            loader.style.display = 'block'; msg.innerText = "データ送信中..."; qrDiv.innerHTML = '';
+            loader.style.display = 'block'; msg.innerText = "分割データ送信中..."; qrDiv.innerHTML = '';
             const syncId = 'STRW-' + Math.random().toString(36).substring(2, 10);
             try {
-                await fetch(GAS_URL + "?id=" + syncId, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(currentRanges) });
+                // 分割対応したdoPostへ一気に送る（Chromebookのアップロードは制限が緩いため）
+                await fetch(`${GAS_URL}?id=${syncId}`, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(currentRanges) });
                 loader.style.display = 'none';
                 new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
                 msg.style.color = "#22c55e"; msg.innerText = "✅ 作成完了 ID: " + syncId;
@@ -220,35 +214,40 @@
         async function processSync(syncId) {
             const msg = document.getElementById('sync-msg');
             msg.style.color = "#000"; 
-            msg.innerText = "大容量データを読込中(30秒程かかる場合があります)...";
+            msg.innerText = "分割データの確認中...";
             
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒待機
-
             try {
-                const res = await fetch(`${GAS_URL}?id=${syncId}`, {
-                    method: "GET",
-                    mode: "cors",
-                    cache: "no-store",
-                    signal: controller.signal
-                });
+                // 1. ファイル数を取得
+                const countRes = await fetch(`${GAS_URL}?id=${syncId}&mode=count`, { mode: "cors", cache: "no-store" });
+                const count = parseInt(await countRes.text());
                 
-                if (!res.ok) throw new Error("サーバー反応なし");
-                const data = await res.json();
-                clearTimeout(timeoutId);
+                if (isNaN(count) || count === 0) {
+                    alert("データが見つかりませんでした。");
+                    return;
+                }
 
-                if (data && data.length > 0) {
-                    msg.innerText = "✅ データ取得完了！上書き中...";
+                let fetchedData = [];
+                for (let i = 0; i < count; i++) {
+                    msg.innerText = `データ読込中 (${i+1}/${count})...`;
+                    const res = await fetch(`${GAS_URL}?id=${syncId}&mode=get&index=${i}`, { mode: "cors", cache: "no-store" });
+                    const part = await res.json();
+                    if (part) fetchedData.push(part);
+                    // 少し待機して通信負荷を分散
+                    await new Promise(r => setTimeout(r, 200));
+                }
+
+                if (fetchedData.length > 0) {
+                    msg.innerText = "✅ 全データ取得完了！保存中...";
                     setTimeout(() => {
                         try {
-                            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(fetchedData));
                             location.reload();
                         } catch (e) { alert("保存容量オーバーです。画像を減らしてください。"); }
                     }, 500);
-                } else { alert("データが見つかりません。"); }
+                }
             } catch (err) {
-                if (err.name === 'AbortError') alert("タイムアウトしました。電波環境を確認してください。");
-                else alert("取得失敗：データが大きすぎます。");
+                console.error(err);
+                alert("取得失敗：通信エラーが発生しました。");
             } finally { msg.innerText = ""; }
         }
 
@@ -420,10 +419,11 @@
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
                     const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
+                    // ★ 画質を落としたくない場合はここを1024などに戻す（localStorageの5MBに注意）
                     const sc = Math.min(1024 / img.width, 1024 / img.height, 1.0);
                     cvs.width = img.width * sc; cvs.height = img.height * sc;
                     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.8); renderConfigList();
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.85); renderConfigList();
                 };
             }; reader.readAsDataURL(file);
         }
