@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V3.10</title>
+    <title>イチゴ選別システム V3.11</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -74,7 +74,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V3.10</div>
+            <div id="app-title">はよ選果 V3.11</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -140,11 +140,9 @@
         const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
 
         async function activateNoSleep() {
-            // 1. Wake Lock API (iOS 16.4+)
             if ('wakeLock' in navigator) {
                 try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
             }
-            // 2. 1pxアニメーション (OSへの「描画中」アピール)
             const pixel = document.getElementById('keep-alive-pixel');
             if (pixelTimer) cancelAnimationFrame(pixelTimer);
             function animatePixel() {
@@ -152,13 +150,10 @@
                 pixelTimer = requestAnimationFrame(animatePixel);
             }
             animatePixel();
-            // 3. 無音定期再生 (オーディオセッション維持)
             if (audioTimer) clearInterval(audioTimer);
             audioTimer = setInterval(() => { silentAudio.play().catch(e => {}); }, 15000);
-            // 4. 位置情報リクエスト (旧iOSへの「活動中」アピール)
             if (locTimer) clearInterval(locTimer);
             locTimer = setInterval(() => { navigator.geolocation.getCurrentPosition(()=>{},()=>{},{enableHighAccuracy:false}); }, 45000);
-            // 5. 無音ビデオ再生
             const video = document.getElementById('no-sleep-video');
             if (video.src === "") {
                 video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC43Ni4xMDA=";
@@ -176,7 +171,7 @@
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", colorName: "青", images: [null, null, null, null] }];
+            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2LD", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", pitch: 1.0, colorName: "青", images: [null, null, null, null] }];
             currentRanges.sort((a, b) => b.min - a.min);
             refreshSounds();
         }
@@ -192,11 +187,12 @@
             sounds["start"] = new Audio("./start.mp3");
         }
 
-        function speak(text, gender) {
+        function speak(text, gender, pitchValue) {
             if (!text) return;
             window.speechSynthesis.cancel();
             const uttr = new SpeechSynthesisUtterance(text);
             uttr.rate = 1.2;
+            uttr.pitch = pitchValue !== undefined ? pitchValue : 1.0;
             if (voices.length > 0) {
                 const target = gender === "male" ? ["Male", "Otoya", "Ichiro"] : ["Female", "Kyoko", "Hanako"];
                 uttr.voice = voices.find(v => target.some(n => v.name.includes(n))) || voices[0];
@@ -204,8 +200,31 @@
             window.speechSynthesis.speak(uttr);
         }
 
+        // ピッチ変更とプレビューの関数を追加
+        window.changePitch = function(i, delta) {
+            let p = parseFloat(currentRanges[i].pitch !== undefined ? currentRanges[i].pitch : 1.0) + delta;
+            if(p < 0.1) p = 0.1;
+            if(p > 2.0) p = 2.0;
+            currentRanges[i].pitch = parseFloat(p.toFixed(1));
+            renderConfigList();
+        };
+
+        window.playPreview = function(i) {
+            const r = currentRanges[i];
+            if (r.audioMode === "tts") {
+                speak(r.ttsText || r.label, r.ttsVoice, r.pitch);
+            } else {
+                if (sounds[r.audio]) {
+                    sounds[r.audio].currentTime = 0;
+                    sounds[r.audio].play();
+                } else {
+                    new Audio("./" + r.audio.toLowerCase() + ".mp3").play().catch(e=>{});
+                }
+            }
+        };
+
         function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('本体に保存しました'); }
-        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
+        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',pitch:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
 
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
@@ -274,7 +293,7 @@
             const match = currentRanges.find(r => diff >= r.min);
             if (match) { 
                 showFlash(match.label, match.colorName || "黒", match.images || []); 
-                if (match.audioMode === "tts") { speak(match.ttsText || match.label, match.ttsVoice); } 
+                if (match.audioMode === "tts") { speak(match.ttsText || match.label, match.ttsVoice, match.pitch); } 
                 else { if (sounds[match.audio]) { sounds[match.audio].currentTime = 0; sounds[match.audio].play(); } }
             }
         }
@@ -347,6 +366,10 @@
                     slots += `<div class="slot">${img?`<img src="${img}"><button class="slot-del" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
                 const colorOptions = Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('');
+                
+                // ピッチの初期値設定
+                const currentPitch = (r.pitch !== undefined ? r.pitch : 1.0).toFixed(1);
+
                 div.innerHTML = `
                     <div class="config-inputs">
                         <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" onchange="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
@@ -354,13 +377,18 @@
                         <div class="input-group">
                             <span class="guide-label">音声：</span>
                             <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
-                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>MP3</option>
+                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>登録音声</option>
                                 <option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option>
                             </select>
                             ${(r.audioMode === "tts") ? `
                                 <input type="text" value="${r.ttsText || ''}" placeholder="読上文" style="width:70px;" onchange="currentRanges[${i}].ttsText=this.value">
                                 <select onchange="currentRanges[${i}].ttsVoice=this.value" style="min-width:50px;"><option value="female" ${r.ttsVoice==='female'?'selected':''}>女</option><option value="male" ${r.ttsVoice==='male'?'selected':''}>男</option></select>
-                                <button onclick="speak('${r.ttsText || r.label}', '${r.ttsVoice || 'female'}')" style="height:45px; width:45px; border-radius:8px; border:1px solid #999; cursor:pointer;">▶</button>
+                                <div class="input-group" style="margin-left:5px; margin-bottom:0;">
+                                    <span class="guide-label">ピッチ:</span>
+                                    <button onclick="changePitch(${i}, -0.1)" style="height:45px; width:40px; font-size:20px; font-weight:bold; border-radius:8px; border:1px solid #999; background:#fff; cursor:pointer;">-</button>
+                                    <input type="number" step="0.1" min="0.1" max="2.0" value="${currentPitch}" onchange="currentRanges[${i}].pitch=parseFloat(this.value)" style="width:50px; text-align:center;">
+                                    <button onclick="changePitch(${i}, 0.1)" style="height:45px; width:40px; font-size:20px; font-weight:bold; border-radius:8px; border:1px solid #999; background:#fff; cursor:pointer;">+</button>
+                                </div>
                             ` : `
                                 <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option ${a==r.audio?'selected':''}>${a}</option>`).join('')}</select>
                             `}
@@ -368,7 +396,11 @@
                         <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${colorOptions}</select></div>
                     </div>
                     <div class="image-section"><span class="guide-label">画像：</span><div class="image-slots">${slots}</div></div>
-                    <button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">判定（${r.label}）を削除する</button>`;
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 15px;">
+                        <button onclick="playPreview(${i})" style="background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; font-size: 18px; flex: 1; cursor: pointer;">▶ プレビュー</button>
+                        <button class="del-row-btn" style="margin-top: 0; flex: 1;" onclick="currentRanges.splice(${i},1);renderConfigList()">判定（${r.label}）を削除する</button>
+                    </div>`;
                 area.appendChild(div);
             });
         }
@@ -388,4 +420,3 @@
     </script>
 </body>
 </html>
-
