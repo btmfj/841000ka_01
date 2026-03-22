@@ -986,7 +986,7 @@
                         <div class="input-group">
                             <span class="guide-label">音声：</span>
                             <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
-                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3') ? 'selected' : ''}>MP3</option>
+                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3') ? 'selected' : ''}>登録音声</option>
                                 <option value="tts" ${r.audioMode==='tts' ? 'selected' : ''}>読み上げ</option>
                             </select>
                             ${(r.audioMode === "tts") ? `
