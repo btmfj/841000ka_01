@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.04</title>
+    <title>イチゴ選別システム V1.05</title>
     <style>
         /* 基本スタイルはV3.18を継承 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
@@ -87,7 +87,7 @@
 
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.04</div>
+            <div id="app-title">はよ選果 V1.05</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -308,7 +308,15 @@
             }
         }
 
-        function triggerEffect(match) {
+        function triggerEffect(match, isPreview = false) {
+            const overlay = document.getElementById('flash-overlay');
+            // プレビュー時は設定モーダル(z:600)より上(z:700)に表示
+            if (isPreview) {
+                overlay.style.zIndex = "700";
+            } else {
+                overlay.style.zIndex = "500";
+            }
+
             showFlash(match.label, match.colorName || "黒", match.images || []); 
             if (match.audioMode === "tts") { speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0); } 
             else { 
@@ -428,7 +436,7 @@
                     <div class="image-section"><span class="guide-label">画像：</span><div class="image-slots">${slots}</div></div>
                     <div class="action-row">
                         <button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">判定（${r.label}）を削除する</button>
-                        <button class="preview-row-btn" onclick="triggerEffect(currentRanges[${i}])">プレビュー</button>
+                        <button class="preview-row-btn" onclick="triggerEffect(currentRanges[${i}], true)">プレビュー</button>
                     </div>`;
                 area.appendChild(div);
             });
