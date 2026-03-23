@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.16</title>
+    <title>イチゴ選別システム V1.17</title>
     <style>
+        /* 既存スタイル維持 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -17,44 +18,14 @@
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; flex-shrink: 0; overflow: hidden; }
         #flash-text { font-size: 14vh; font-weight: bold; color: #fff; margin: 0; text-align: center; width: 100%; white-space: nowrap; }
-        
         #flash-img-cell { width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-grow: 1; height: 0; }
-        
-        /* 画像コンテナ：画面の高さに合わせてサイズを制限 */
         #flash-img-container { width: 100%; height: 100%; max-width: 80vh; margin: 0 auto; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; overflow: hidden; }
         
-        /* 田の字型レイアウト */
-        #flash-img-container.grid-layout { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            grid-template-rows: 1fr 1fr; 
-            gap: 15px; 
-            padding: 10px; 
-            box-sizing: border-box; 
-            aspect-ratio: 1 / 1;
-            width: auto;
-            height: 100%;
-        }
+        #flash-img-container.grid-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 15px; padding: 10px; box-sizing: border-box; aspect-ratio: 1 / 1; width: auto; height: 100%; }
+        #flash-img-container.grid-layout div { position: relative; display: flex; width: 100%; height: 100%; overflow: hidden; background: transparent; border-radius: 8px; }
+        .flash-img-item { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
         
-        /* 各マスの設定：画像がはみ出したり重なったりしないように固定 */
-        #flash-img-container.grid-layout div {
-            position: relative;
-            display: flex;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: transparent; /* ★ V1.16修正: 背景を完全に透明に */
-            border-radius: 8px;
-        }
-
-        .flash-img-item { 
-            max-width: 100%; 
-            max-height: 100%; 
-            width: auto;
-            height: auto;
-            object-fit: contain; /* 枠内で比率を維持して収める */
-        }
-        
+        /* ボタン・設定画面スタイル */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
         #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
@@ -63,17 +34,26 @@
         .mode-btn { flex: 1; height: 55px; border-radius: 12px; border: 3px solid #d63031; background: #fff; color: #d63031; font-weight: bold; font-size: 18px; }
         .mode-btn.active { background: #d63031; color: #fff; }
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
+        
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 15px; box-sizing: border-box; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .modal-title { font-size: 26px; font-weight: bold; }
         .close-btn { font-size: 35px; border: none; background: none; color: #666; cursor: pointer; padding: 0 10px; }
+        
         .config-row { border: 2px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: #fafafa; }
         .input-group { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
         .guide-label { font-size: 15px; font-weight: bold; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; }
         .config-inputs input, .config-inputs select { height: 45px; font-size: 18px; font-weight: bold; border: 1px solid #999; border-radius: 8px; padding: 0 5px; }
-        .config-inputs input[type="number"] { width: 70px; }
-        .config-inputs input[type="text"] { width: 90px; }
-        .config-inputs select { min-width: 70px; }
+        
+        /* TTSコントロール用スタイル */
+        .tts-control-box { background: #eef2ff; padding: 10px; border-radius: 10px; margin-top: 5px; width: 100%; box-sizing: border-box; border: 1px solid #c7d2fe; }
+        .tts-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; width: 100%; }
+        .tts-row label { font-size: 13px; font-weight: bold; min-width: 50px; }
+        .tts-slider { flex-grow: 1; height: 30px; cursor: pointer; }
+        .step-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #999; background: #fff; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px #ccc; }
+        .step-btn:active { transform: translateY(2px); box-shadow: none; }
+        .val-disp { font-size: 14px; font-weight: bold; min-width: 35px; text-align: center; color: #4338ca; }
+
         .image-slots { display: flex; gap: 12px; justify-content: flex-start; margin-top: 5px; }
         .slot { position: relative; width: 65px; height: 65px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; }
         .slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
@@ -95,7 +75,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.16</div>
+            <div id="app-title">はよ選果 V1.17</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -140,7 +120,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script>
-        const STORAGE_KEY = 'strawberry_config_v111'; 
+        const STORAGE_KEY = 'strawberry_config_v117'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzoXz3vQvQOg6TIR0cshy5N6ysqWC-AODRzlCmN2Cr-WPK3hgOr3zCVPZ_kMgNqYu_U/exec";
@@ -149,6 +129,7 @@
         const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
         function toHalfWidth(str) { return str ? str.replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)) : str; }
         function getFileName(audioName) { return audioName ? encodeURIComponent(toHalfWidth(audioName).toLowerCase()) + ".mp3" : ""; }
+        
         let wakeLock = null, pixelTimer = null, audioTimer = null, locTimer = null;
         const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
         async function activateNoSleep() {
@@ -161,18 +142,26 @@
             video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC43Ni4xMDA=";
             video.play().catch(e => {});
         }
+
         let voices = [];
         function loadVoices() { voices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja')); }
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
+
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2L", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", ttsRate: 1.0, colorName: "青", images: [null, null, null, null] }];
-            currentRanges = currentRanges.map(r => { if(r.audio) r.audio = toHalfWidth(r.audio); if(r.ttsRate === undefined) r.ttsRate = 1.0; return r; });
+            currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2L", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", ttsRate: 1.0, ttsPitch: 1.0, colorName: "青", images: [null, null, null, null] }];
+            currentRanges = currentRanges.map(r => { 
+                if(r.audio) r.audio = toHalfWidth(r.audio); 
+                if(r.ttsRate === undefined) r.ttsRate = 1.0; 
+                if(r.ttsPitch === undefined) r.ttsPitch = 1.0; 
+                return r; 
+            });
             currentRanges.sort((a, b) => b.min - a.min);
             refreshSounds();
         }
         window.onload = loadSettings;
+
         function refreshSounds() {
             sounds = {};
             currentRanges.forEach(r => {
@@ -183,19 +172,23 @@
             });
             sounds["start"] = new Audio("./start.mp3");
         }
-        function speak(text, gender, rate = 1.0) {
+
+        function speak(text, gender, rate = 1.0, pitch = 1.0) {
             if (!text) return;
             window.speechSynthesis.cancel();
             const uttr = new SpeechSynthesisUtterance(text);
             uttr.rate = rate;
+            uttr.pitch = pitch;
             if (voices.length > 0) {
                 const target = gender === "male" ? ["Male", "Otoya", "Ichiro"] : ["Female", "Kyoko", "Hanako"];
                 uttr.voice = voices.find(v => target.some(n => v.name.includes(n))) || voices[0];
             }
             window.speechSynthesis.speak(uttr);
         }
+
         function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('本体に保存しました'); }
-        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',ttsRate:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
+        function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',ttsRate:1.0,ttsPitch:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
+
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "データ送信中..."; qrDiv.innerHTML = '';
@@ -207,6 +200,7 @@
                 msg.style.color = "#22c55e"; msg.innerText = "✅ 作成完了 ID: " + syncId;
             } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ 送信エラー"; }
         }
+
         async function processSync(syncId) {
             const msg = document.getElementById('sync-msg');
             msg.style.color = "#000"; msg.innerText = "同期開始...";
@@ -219,16 +213,14 @@
                     msg.innerText = `データ読込・保存中 (${i+1}/${count})...`;
                     const res = await fetch(`${GAS_URL}?id=${syncId}&mode=get&index=${i}`, { mode: "cors", cache: "no-store" });
                     const part = await res.json();
-                    if (part) {
-                        workData.push(part);
-                        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(workData)); } catch (e) { throw new Error(`容量限界を超えました。`); }
-                    }
+                    if (part) { workData.push(part); localStorage.setItem(STORAGE_KEY, JSON.stringify(workData)); }
                     await new Promise(r => setTimeout(r, 150));
                 }
                 msg.style.color = "#22c55e"; msg.innerText = "✅ 同期完了！";
                 setTimeout(() => { location.reload(); }, 1000);
-            } catch (err) { alert("【同期エラー】\n" + err.message); } finally { msg.innerText = ""; }
+            } catch (err) { alert("【同期エラー】\n" + err.message); }
         }
+
         async function scanGasQR() {
             try {
                 const video = document.createElement("video"), canvas = document.getElementById("v-canvas"), ctx = canvas.getContext("2d");
@@ -247,73 +239,42 @@
                 requestAnimationFrame(tick);
             } catch (err) { alert("カメラ起動失敗"); }
         }
-        function checkDifference(oldW, newW) {
-            const diff = oldW - newW; if (diff < 5.0) return;
-            document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
-            const match = currentRanges.find(r => diff >= r.min);
-            if (match) triggerEffect(match);
-        }
+
         function triggerEffect(match, isPreview = false) {
             const overlay = document.getElementById('flash-overlay');
             overlay.style.zIndex = isPreview ? "700" : "500";
             showFlash(match.label, match.colorName || "黒", match.images || []); 
-            if (match.audioMode === "tts") speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0);
+            if (match.audioMode === "tts") speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0, match.ttsPitch || 1.0);
             else { const ck = toHalfWidth(match.audio); if (sounds[ck]) { sounds[ck].currentTime = 0; sounds[ck].play(); } }
         }
 
         function showFlash(text, colorName, imgArray) {
             const overlay = document.getElementById('flash-overlay');
-            const fTextCell = document.getElementById('flash-text-cell');
-            const fText = document.getElementById('flash-text');
-            const imgCell = document.getElementById('flash-img-cell');
-            const imgContainer = document.getElementById('flash-img-container');
-            
+            const fTextCell = document.getElementById('flash-text-cell'), fText = document.getElementById('flash-text');
+            const imgCell = document.getElementById('flash-img-cell'), imgContainer = document.getElementById('flash-img-container');
             const bgColor = colorPalette[colorName] || "#000000";
             const activeImages = imgArray.filter(src => src !== null);
-            
-            overlay.style.backgroundColor = bgColor;
-            fText.innerText = text;
-            imgContainer.innerHTML = '';
-            imgContainer.className = '';
-
+            overlay.style.backgroundColor = bgColor; fText.innerText = text;
+            imgContainer.innerHTML = ''; imgContainer.className = '';
             if (currentMode === "pre" || activeImages.length === 0) {
-                fTextCell.style.height = "100%";
-                fTextCell.style.display = "flex";
-                imgCell.style.display = "none";
-                fText.style.fontSize = "25vh"; 
+                fTextCell.style.height = "100%"; fTextCell.style.display = "flex"; imgCell.style.display = "none"; fText.style.fontSize = "25vh"; 
             } else {
-                fTextCell.style.height = "20%";
-                fTextCell.style.display = "flex";
-                imgCell.style.display = "flex";
-                fText.style.fontSize = "14vh";
-
+                fTextCell.style.height = "20%"; fTextCell.style.display = "flex"; imgCell.style.display = "flex"; fText.style.fontSize = "14vh";
                 if (imgArray.length >= 3 && activeImages.length >= 3) {
                     imgContainer.classList.add('grid-layout');
                     ['tl', 'tr', 'bl', 'br'].forEach((pos, i) => {
                         const gridItem = document.createElement('div');
-                        
-                        // マスの中での寄り方を設定
                         if (pos === 'tl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-end"; }
                         if (pos === 'tr') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-end"; }
                         if (pos === 'bl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-start"; }
                         if (pos === 'br') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-start"; }
-
-                        if (imgArray[i]) {
-                            const img = document.createElement('img'); img.src = imgArray[i]; img.className = 'flash-img-item';
-                            gridItem.appendChild(img);
-                        }
+                        if (imgArray[i]) { const img = document.createElement('img'); img.src = imgArray[i]; img.className = 'flash-img-item'; gridItem.appendChild(img); }
                         imgContainer.appendChild(gridItem);
                     });
                 } else {
-                    activeImages.forEach(src => {
-                        const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item';
-                        // 1〜2枚の時は横並び
-                        img.style.maxWidth = activeImages.length === 1 ? "100%" : "48%";
-                        imgContainer.appendChild(img);
-                    });
+                    activeImages.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item'; img.style.maxWidth = activeImages.length === 1 ? "100%" : "48%"; imgContainer.appendChild(img); });
                 }
             }
-            
             overlay.style.display = 'flex';
             if (window.flashTimer) clearTimeout(window.flashTimer);
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1200 : 3500);
@@ -335,7 +296,7 @@
                     document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
                     weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
                     if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
-                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) checkDifference(stableWeight, w); stableWeight = w; }
+                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) { const diff = stableWeight - w; if(diff>=5.0){ document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減"; const match = currentRanges.find(r => diff >= r.min); if (match) triggerEffect(match); } } stableWeight = w; }
                     }
                 });
             } catch (err) { alert("秤が見つかりません"); }
@@ -344,6 +305,13 @@
         document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
+
+        function updateTtsVal(idx, prop, val) {
+            const v = Math.min(Math.max(parseFloat(val), 0.1), 2.0);
+            currentRanges[idx][prop] = parseFloat(v.toFixed(1));
+            renderConfigList();
+        }
+
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
@@ -353,10 +321,49 @@
                     const img = r.images[j];
                     slots += `<div class="slot">${img?`<img src="${img}"><button class="slot-del" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
-                div.innerHTML = `<div class="config-inputs"><div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" oninput="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div><div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" oninput="currentRanges[${i}].label=this.value"></div><div class="input-group"><span class="guide-label">音声：</span><select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();"><option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>登録音声</option><option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option></select>${(r.audioMode === "tts") ? `<input type="text" value="${r.ttsText || ''}" style="width:70px;" oninput="currentRanges[${i}].ttsText=this.value">` : `<select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option value="${a}" ${toHalfWidth(a)==toHalfWidth(r.audio)?'selected':''}>${a.toUpperCase()}</option>`).join('')}</select>`}</div><div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('')}</select></div></div><div class="image-section"><div class="image-slots">${slots}</div></div><div class="action-row"><button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">削除</button><button class="preview-row-btn" onclick="triggerEffect(currentRanges[${i}], true)">プレビュー</button></div>`;
+                
+                let ttsControl = '';
+                if(r.audioMode === "tts") {
+                    ttsControl = `
+                        <div class="tts-control-box">
+                            <div class="tts-row">
+                                <label>ピッチ</label>
+                                <button class="step-btn" onclick="updateTtsVal(${i},'ttsPitch',${r.ttsPitch}-0.1)">-</button>
+                                <input type="range" class="tts-slider" min="0.1" max="2.0" step="0.1" value="${r.ttsPitch}" oninput="updateTtsVal(${i},'ttsPitch',this.value)">
+                                <button class="step-btn" onclick="updateTtsVal(${i},'ttsPitch',${r.ttsPitch}+0.1)">+</button>
+                                <span class="val-disp">${r.ttsPitch.toFixed(1)}</span>
+                            </div>
+                            <div class="tts-row">
+                                <label>速さ</label>
+                                <button class="step-btn" onclick="updateTtsVal(${i},'ttsRate',${r.ttsRate}-0.1)">-</button>
+                                <input type="range" class="tts-slider" min="0.1" max="2.0" step="0.1" value="${r.ttsRate}" oninput="updateTtsVal(${i},'ttsRate',this.value)">
+                                <button class="step-btn" onclick="updateTtsVal(${i},'ttsRate',${r.ttsRate}+0.1)">+</button>
+                                <span class="val-disp">${r.ttsRate.toFixed(1)}</span>
+                            </div>
+                        </div>`;
+                }
+
+                div.innerHTML = `
+                    <div class="config-inputs">
+                        <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" oninput="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
+                        <div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" oninput="currentRanges[${i}].label=this.value"></div>
+                        <div class="input-group">
+                            <span class="guide-label">音声：</span>
+                            <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
+                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>登録音声</option>
+                                <option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option>
+                            </select>
+                            ${(r.audioMode === "tts") ? `<input type="text" value="${r.ttsText || ''}" style="width:70px;" placeholder="読上げ文字" oninput="currentRanges[${i}].ttsText=this.value">` : `<select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option value="${a}" ${toHalfWidth(a)==toHalfWidth(r.audio)?'selected':''}>${a.toUpperCase()}</option>`).join('')}</select>`}
+                        </div>
+                        ${ttsControl}
+                        <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('')}</select></div>
+                    </div>
+                    <div class="image-section"><div class="image-slots">${slots}</div></div>
+                    <div class="action-row"><button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">削除</button><button class="preview-row-btn" onclick="triggerEffect(currentRanges[${i}], true)">プレビュー</button></div>`;
                 area.appendChild(div);
             });
         }
+
         function addImg(e, i, sIdx) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader(); reader.onload = (f) => {
