@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.14</title>
+    <title>イチゴ選別システム V1.15</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -20,21 +20,42 @@
         
         #flash-img-cell { width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-grow: 1; height: 0; }
         
-        /* 画像コンテナの修正：横長画面でも離れないように最大幅と中央寄せを設定 */
-        #flash-img-container { width: 100%; height: 100%; max-width: 90vh; margin: 0 auto; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; overflow: hidden; }
+        /* 画像コンテナ：画面の高さに合わせてサイズを制限 */
+        #flash-img-container { width: 100%; height: 100%; max-width: 80vh; margin: 0 auto; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; overflow: hidden; }
         
-        /* グリッドレイアウト（3〜4枚）の修正：中央に寄るように調整 */
+        /* 田の字型レイアウトの修正 */
         #flash-img-container.grid-layout { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
             grid-template-rows: 1fr 1fr; 
-            gap: 10px; 
+            gap: 15px; 
             padding: 10px; 
             box-sizing: border-box; 
-            aspect-ratio: 1 / 1; /* 正方形を維持して中央寄せを強調 */
+            aspect-ratio: 1 / 1;
+            width: auto;
+            height: 100%;
         }
         
-        .flash-img-item { object-fit: contain; border: none; max-width: 100%; max-height: 100%; }
+        /* 各マスの設定：画像がはみ出したり重なったりしないように固定 */
+        #flash-img-container.grid-layout div {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: rgba(255,255,255,0.1); /* 枠のデバッグ用（不要なら削除可） */
+            border-radius: 8px;
+        }
+
+        .flash-img-item { 
+            max-width: 100%; 
+            max-height: 100%; 
+            width: auto;
+            height: auto;
+            object-fit: contain; /* 枠内で比率を維持して収める */
+        }
         
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
@@ -76,7 +97,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.14</div>
+            <div id="app-title">はよ選果 V1.15</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -242,7 +263,6 @@
             else { const ck = toHalfWidth(match.audio); if (sounds[ck]) { sounds[ck].currentTime = 0; sounds[ck].play(); } }
         }
 
-        // V1.14: 画面中央に寄るように修正
         function showFlash(text, colorName, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fTextCell = document.getElementById('flash-text-cell');
@@ -273,10 +293,8 @@
                     imgContainer.classList.add('grid-layout');
                     ['tl', 'tr', 'bl', 'br'].forEach((pos, i) => {
                         const gridItem = document.createElement('div');
-                        gridItem.style.display = "flex";
-                        gridItem.style.overflow = "hidden";
                         
-                        // ★ 画像が中央に寄るように配置を調整
+                        // マスの中での寄り方を設定
                         if (pos === 'tl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-end"; }
                         if (pos === 'tr') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-end"; }
                         if (pos === 'bl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-start"; }
@@ -291,7 +309,8 @@
                 } else {
                     activeImages.forEach(src => {
                         const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item';
-                        img.style.maxWidth = activeImages.length === 1 ? "100%" : "49%";
+                        // 1〜2枚の時は横並び
+                        img.style.maxWidth = activeImages.length === 1 ? "100%" : "48%";
                         imgContainer.appendChild(img);
                     });
                 }
