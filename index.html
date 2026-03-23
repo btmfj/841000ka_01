@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.12</title>
+    <title>イチゴ選別システム V1.13</title>
     <style>
+        /* 既存スタイルを維持 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -14,16 +15,20 @@
         #weight span { font-size: 4vh; color: #000; margin-left: 5px; }
         #diff-display { font-size: 4.5vh; color: #ff4757; height: 5vh; font-weight: bold; margin-bottom: 10px; }
         
-        /* ポップアップ（フラッシュ）領域 */
-        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; flex-direction: column; justify-content: center; align-items: center; }
-        #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; }
-        #flash-text { font-size: 14vh; font-weight: bold; color: #fff; -webkit-text-stroke: 2px #000; margin: 0; text-align: center; width: 100%; }
-        #flash-img-cell { width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap; }
+        /* ポップアップ（フラッシュ）領域のCSSを強化 */
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
+        #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; flex-shrink: 0; overflow: hidden; }
+        #flash-text { font-size: 14vh; font-weight: bold; color: #fff; -webkit-text-stroke: 2px #000; margin: 0; text-align: center; width: 100%; white-space: nowrap; }
+        
+        /* 画像エリアがはみ出さないように設定 */
+        #flash-img-cell { width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-grow: 1; height: 0; } /* height:0とflex-growで残りの高さを埋める */
+        #flash-img-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap; overflow: hidden; }
+        
+        /* グリッドレイアウト（3〜4枚）の調整 */
         #flash-img-container.grid-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; box-sizing: border-box; }
         .flash-img-item { object-fit: contain; border: none; max-width: 100%; max-height: 100%; }
         
-        /* 操作系スタイル */
+        /* 操作系スタイル（変更なし） */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
         #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
@@ -32,7 +37,6 @@
         .mode-btn { flex: 1; height: 55px; border-radius: 12px; border: 3px solid #d63031; background: #fff; color: #d63031; font-weight: bold; font-size: 18px; }
         .mode-btn.active { background: #d63031; color: #fff; }
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
-
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 15px; box-sizing: border-box; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .modal-title { font-size: 26px; font-weight: bold; }
@@ -44,7 +48,6 @@
         .config-inputs input[type="number"] { width: 70px; }
         .config-inputs input[type="text"] { width: 90px; }
         .config-inputs select { min-width: 70px; }
-        
         .image-slots { display: flex; gap: 12px; justify-content: flex-start; margin-top: 5px; }
         .slot { position: relative; width: 65px; height: 65px; border: 2px dashed #bbb; background: #eee; border-radius: 8px; }
         .slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
@@ -65,20 +68,17 @@
 <body>
     <video id="no-sleep-video" playsinline muted loop style="display:none;"></video>
     <div id="keep-alive-pixel"></div>
-
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.12</div>
+            <div id="app-title">はよ選果 V1.13</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
         </div>
-        
         <div id="flash-overlay">
             <div id="flash-text-cell"><div id="flash-text"></div></div>
             <div id="flash-img-cell"><div id="flash-img-container"></div></div>
         </div>
-
         <div class="btn-container">
             <button id="connectBtn" class="my-button">① 接続・開始</button>
             <button id="tareBtn" class="my-button">② 基準リセット</button>
@@ -89,7 +89,6 @@
             <button id="settingsBtn" class="my-button">🛠 設定</button>
         </div>
     </div>
-
     <div id="settings-modal" class="modal">
         <div class="modal-header">
             <div class="modal-title">設定</div>
@@ -112,26 +111,20 @@
         </div>
         <div style="height:40px;"></div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-
     <script>
         const STORAGE_KEY = 'strawberry_config_v111'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzoXz3vQvQOg6TIR0cshy5N6ysqWC-AODRzlCmN2Cr-WPK3hgOr3zCVPZ_kMgNqYu_U/exec";
-        
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbz9MbewMWAiRx2pSsu7usoloHm1guK32Woe_9XNNU_r6nTm8VlNFcOQ4h3VTnQFh5g/exec";
         let currentRanges = [], sounds = {}, currentMode = "pre";
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2L", "2L大", "2L小", "3L", "L", "L大", "L小", "M", "M大", "M小", "S", "S大", "S小", "a", "aa", "b", "dx", "ex", "g"];
         const colorPalette = { "赤": "#d63031", "紫": "#6c5ce7", "青": "#0984e3", "緑": "#00b894", "オレンジ": "#e67e22", "黒": "#000000" };
-
         function toHalfWidth(str) { return str ? str.replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)) : str; }
         function getFileName(audioName) { return audioName ? encodeURIComponent(toHalfWidth(audioName).toLowerCase()) + ".mp3" : ""; }
-
         let wakeLock = null, pixelTimer = null, audioTimer = null, locTimer = null;
         const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
-
         async function activateNoSleep() {
             if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
             function animatePixel() { document.getElementById('keep-alive-pixel').style.top = (Math.random() * 2) + "px"; pixelTimer = requestAnimationFrame(animatePixel); }
@@ -139,15 +132,13 @@
             audioTimer = setInterval(() => { silentAudio.play().catch(e => {}); }, 15000);
             locTimer = setInterval(() => { navigator.geolocation.getCurrentPosition(()=>{},()=>{},{enableHighAccuracy:false}); }, 45000);
             const video = document.getElementById('no-sleep-video');
-            video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC43Ni4xMDA=";
+            video.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21hdmMxbXA0MgAAAAhmcmVlAAAAG21kYXTeBAAAbGliYXZjb3JlIDU4LjkxLjEwMAD//wAAABxtb292AAAAbG12aGQAAAAA3nN/X95zf18AAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACNXRyYWsAAABcdGtoZAAAAAnec39f3nN/XwAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAfQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADec39f3nN/XwAAV+AAAAL0AVhMdW5nAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAQptZGlhAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABOG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXJzdGJsAAAAtXN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAgACABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAr/+EAFWfEAn76f/p9An4AABAAAAMAQAAH0AABQAABGRmS9IAAAAtzdHRzAAAAAAAAAAEAAAABAAAV+AAAAClzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAUc3RzegAAAAAAAAAAAAAAAgAAABRzdGNvAAAAAAAAAAEAAAA4AAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcgAAAAAAAAAAAAAAAAAAAAAAYXBwbAAAAClpbHN0AAAAIal0b28AAAAbZGF0YQAAAAEAAAAATGF2ZiA1OC77NjEwMDA=";
             video.play().catch(e => {});
         }
-
         let voices = [];
         function loadVoices() { voices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja')); }
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
-
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
             currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2L", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", ttsRate: 1.0, colorName: "青", images: [null, null, null, null] }];
@@ -156,7 +147,6 @@
             refreshSounds();
         }
         window.onload = loadSettings;
-
         function refreshSounds() {
             sounds = {};
             currentRanges.forEach(r => {
@@ -167,7 +157,6 @@
             });
             sounds["start"] = new Audio("./start.mp3");
         }
-
         function speak(text, gender, rate = 1.0) {
             if (!text) return;
             window.speechSynthesis.cancel();
@@ -179,10 +168,8 @@
             }
             window.speechSynthesis.speak(uttr);
         }
-
         function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('本体に保存しました'); }
         function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',ttsRate:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
-
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "データ送信中..."; qrDiv.innerHTML = '';
@@ -194,7 +181,6 @@
                 msg.style.color = "#22c55e"; msg.innerText = "✅ 作成完了 ID: " + syncId;
             } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ 送信エラー"; }
         }
-
         async function processSync(syncId) {
             const msg = document.getElementById('sync-msg');
             msg.style.color = "#000"; msg.innerText = "同期開始...";
@@ -217,7 +203,6 @@
                 setTimeout(() => { location.reload(); }, 1000);
             } catch (err) { alert("【同期エラー】\n" + err.message); } finally { msg.innerText = ""; }
         }
-
         async function scanGasQR() {
             try {
                 const video = document.createElement("video"), canvas = document.getElementById("v-canvas"), ctx = canvas.getContext("2d");
@@ -236,14 +221,12 @@
                 requestAnimationFrame(tick);
             } catch (err) { alert("カメラ起動失敗"); }
         }
-
         function checkDifference(oldW, newW) {
             const diff = oldW - newW; if (diff < 5.0) return;
             document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
             const match = currentRanges.find(r => diff >= r.min);
             if (match) triggerEffect(match);
         }
-
         function triggerEffect(match, isPreview = false) {
             const overlay = document.getElementById('flash-overlay');
             overlay.style.zIndex = isPreview ? "700" : "500";
@@ -252,7 +235,7 @@
             else { const ck = toHalfWidth(match.audio); if (sounds[ck]) { sounds[ck].currentTime = 0; sounds[ck].play(); } }
         }
 
-        // V1.12: モード切替と画像表示のロジックを厳密に分離
+        // V1.13: 画像エリアの高さ制御を厳密化
         function showFlash(text, colorName, imgArray) {
             const overlay = document.getElementById('flash-overlay');
             const fTextCell = document.getElementById('flash-text-cell');
@@ -268,15 +251,19 @@
             imgContainer.innerHTML = '';
             imgContainer.className = '';
 
-            // ★ 修正: 事前選果モード または 直パック詰めでも画像がない場合
+            // モードと画像の有無による分岐
             if (currentMode === "pre" || activeImages.length === 0) {
+                // 文字のみ中央表示モード
                 fTextCell.style.height = "100%";
+                fTextCell.style.display = "flex";
                 imgCell.style.display = "none";
                 fText.style.fontSize = "25vh"; 
             } else {
+                // 画像ありモード（直パック詰め 且つ 画像あり）
                 fTextCell.style.height = "20%";
+                fTextCell.style.display = "flex";
                 imgCell.style.display = "flex";
-                imgCell.style.height = "80%";
+                // ★ V1.13修正: CSS側のflex-growを利用するため、JSでの高さ指定を削除、または適切に
                 fText.style.fontSize = "14vh";
 
                 if (imgArray.length >= 3 && activeImages.length >= 3) {
@@ -284,6 +271,7 @@
                     ['tl', 'tr', 'bl', 'br'].forEach((pos, i) => {
                         const gridItem = document.createElement('div');
                         gridItem.style.display = "flex"; gridItem.style.justifyContent = "center"; gridItem.style.alignItems = "center";
+                        gridItem.style.overflow = "hidden"; // グリッド内でもはみ出し防止
                         if (imgArray[i]) {
                             const img = document.createElement('img'); img.src = imgArray[i]; img.className = 'flash-img-item';
                             gridItem.appendChild(img);
@@ -293,6 +281,7 @@
                 } else {
                     activeImages.forEach(src => {
                         const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item';
+                        // 1枚か2枚かによって最大幅を調整
                         img.style.maxWidth = activeImages.length === 1 ? "100%" : "49%";
                         imgContainer.appendChild(img);
                     });
@@ -325,12 +314,10 @@
                 });
             } catch (err) { alert("秤が見つかりません"); }
         };
-
         document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
         document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
-        
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
             currentRanges.forEach((r, i) => {
@@ -340,26 +327,7 @@
                     const img = r.images[j];
                     slots += `<div class="slot">${img?`<img src="${img}"><button class="slot-del" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
-                div.innerHTML = `
-                    <div class="config-inputs">
-                        <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" oninput="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
-                        <div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" oninput="currentRanges[${i}].label=this.value"></div>
-                        <div class="input-group">
-                            <span class="guide-label">音声：</span>
-                            <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
-                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>MP3</option>
-                                <option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option>
-                            </select>
-                            ${(r.audioMode === "tts") ? `<input type="text" value="${r.ttsText || ''}" style="width:70px;" oninput="currentRanges[${i}].ttsText=this.value">` : `
-                                <select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option value="${a}" ${toHalfWidth(a)==toHalfWidth(r.audio)?'selected':''}>${a.toUpperCase()}</option>`).join('')}</select>`}
-                        </div>
-                        <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('')}</select></div>
-                    </div>
-                    <div class="image-section"><div class="image-slots">${slots}</div></div>
-                    <div class="action-row">
-                        <button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">削除</button>
-                        <button class="preview-row-btn" onclick="triggerEffect(currentRanges[${i}], true)">プレビュー</button>
-                    </div>`;
+                div.innerHTML = `<div class="config-inputs"><div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" oninput="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div><div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" oninput="currentRanges[${i}].label=this.value"></div><div class="input-group"><span class="guide-label">音声：</span><select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();"><option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>MP3</option><option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option></select>${(r.audioMode === "tts") ? `<input type="text" value="${r.ttsText || ''}" style="width:70px;" oninput="currentRanges[${i}].ttsText=this.value">` : `<select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option value="${a}" ${toHalfWidth(a)==toHalfWidth(r.audio)?'selected':''}>${a.toUpperCase()}</option>`).join('')}</select>`}</div><div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('')}</select></div></div><div class="image-section"><div class="image-slots">${slots}</div></div><div class="action-row"><button class="del-row-btn" onclick="currentRanges.splice(${i},1);renderConfigList()">削除</button><button class="preview-row-btn" onclick="triggerEffect(currentRanges[${i}], true)">プレビュー</button></div>`;
                 area.appendChild(div);
             });
         }
