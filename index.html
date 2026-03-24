@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.02</title>
+    <title>イチゴ選別システム V2.03</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -14,30 +14,26 @@
         #weight span { font-size: 4vh; color: #000; margin-left: 5px; }
         #diff-display { font-size: 4.5vh; color: #ff4757; height: 5vh; font-weight: bold; margin-bottom: 10px; }
         
-        /* フラッシュオーバーレイの設定 */
-        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; display: none; box-sizing: border-box; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
-        
-        /* テキストエリア：長い文字数でも縮小して収める */
+        /* フラッシュオーバーレイ */
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: none; box-sizing: border-box; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
         #flash-text-cell { display: flex; justify-content: center; align-items: center; width: 100%; flex-shrink: 0; overflow: hidden; padding: 0 10px; box-sizing: border-box; }
-        #flash-text { font-weight: bold; color: #fff; margin: 0; text-align: center; width: 100%; white-space: nowrap; display: inline-block; }
-        
+        #flash-text { font-weight: bold; color: #fff; margin: 0; text-align: center; width: 100%; white-space: nowrap; }
         #flash-img-cell { width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-grow: 1; }
         
-        /* 画像コンテナ：中央寄せ */
-        #flash-img-container { display: flex; justify-content: center; align-items: center; gap: 10px; width: 90%; height: 90%; max-width: 80vh; }
-        
-        /* 田の字（グリッド）レイアウトの固定 */
-        #flash-img-container.grid-layout { 
+        /* 田の字レイアウト固定 */
+        #flash-img-container { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
             grid-template-rows: 1fr 1fr; 
             gap: 15px; 
-            aspect-ratio: 1 / 1;
+            width: 90%; 
+            height: 90%; 
+            max-width: 80vh; 
+            aspect-ratio: 1 / 1; 
         }
-        .grid-slot { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .grid-slot { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; background: rgba(255,255,255,0.1); border-radius: 10px; }
         .flash-img-item { width: 100%; height: 100%; object-fit: contain; }
 
-        /* ボタン・UI関連 */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
         #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
@@ -47,14 +43,8 @@
         .mode-btn.active { background: #d63031; color: #fff; box-shadow: inset 4px 4px 8px rgba(0,0,0,0.3); }
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
         
-        /* モーダル関連 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; box-sizing: border-box; overflow-y: auto; padding-top: 70px; }
-        .modal-header { position: fixed; top: 0; left: 0; width: 100%; height: 70px; background: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding: 0 15px; box-sizing: border-box; z-index: 700; }
-        .modal-title { font-size: 22px; font-weight: bold; }
-        .header-btn-group { display: flex; gap: 10px; }
-        .header-btn { height: 45px; padding: 0 15px; border-radius: 10px; border: none; color: white; font-weight: bold; font-size: 16px; cursor: pointer; }
-        .save-btn { background-color: #28a745; }
-        .back-btn { background-color: #ff4757; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; box-sizing: border-box; overflow-y: auto; padding-top: 70px; }
+        .modal-header { position: fixed; top: 0; left: 0; width: 100%; height: 70px; background: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding: 0 15px; box-sizing: border-box; z-index: 2100; }
         .modal-content { padding: 15px; }
         .config-row { border: 2px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: #fafafa; }
         .input-group { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
@@ -68,7 +58,6 @@
         .slot-del { position: absolute; top: -8px; right: -8px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; font-weight: bold; }
         
         .share-card { background: #f0fdf4; border: 3px solid #10b981; border-radius: 20px; padding: 20px; margin-top: 30px; text-align: center; }
-        .sync-button { height: 55px; font-size: 18px; margin: 8px 0; }
         #qrcode { margin: 15px auto; display: flex; justify-content: center; background: white; padding: 10px; min-height: 160px; border: 1px solid #ddd; }
         #v-canvas { width: 100%; max-width: 320px; display: none; margin: 15px auto; border: 4px solid #10b981; border-radius: 12px; }
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; margin: 15px auto; }
@@ -81,7 +70,7 @@
     
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.02</div>
+            <div id="app-title">はよ選果 V2.03</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -117,13 +106,13 @@
             
             <div class="share-card">
                 <h3>設定の同期</h3>
-                <button class="my-button sync-button" style="background:#10b981;" onclick="syncToGas()">QRコードの作成</button>
+                <button class="my-button sync-button" style="background:#10b981; width:100%; height:55px; font-weight:bold; color:white; border-radius:10px; border:none; margin:5px 0;" onclick="syncToGas()">QRコードの作成</button>
                 <div id="loader" class="loader"></div>
                 <div id="qrcode"></div>
                 <p id="sync-msg" style="font-size:14px; font-weight:bold;"></p>
                 <hr style="margin:20px 0; border:0; border-top:2px dashed #10b981; opacity:0.3;">
-                <button class="my-button sync-button" style="background:#3b82f6;" onclick="scanGasQR()">カメラでQR読込</button>
-                <button class="my-button sync-button" style="background:#6366f1;" onclick="document.getElementById('qr-file-input').click()">写真からQR読込</button>
+                <button class="my-button sync-button" style="background:#3b82f6; width:100%; height:55px; font-weight:bold; color:white; border-radius:10px; border:none; margin:5px 0;" onclick="scanGasQR()">カメラでQR読込</button>
+                <button class="my-button sync-button" style="background:#6366f1; width:100%; height:55px; font-weight:bold; color:white; border-radius:10px; border:none; margin:5px 0;" onclick="document.getElementById('qr-file-input').click()">写真からQR読込</button>
                 <input type="file" id="qr-file-input" accept="image/*" onchange="readQrFromFile(event)" style="display:none">
                 <div id="qr-camera-area"><canvas id="v-canvas"></canvas></div>
             </div>
@@ -176,9 +165,9 @@
             sounds["start"] = new Audio("./start.mp3");
         }
 
+        // プレビューボタンが確実に動くように修正
         function triggerEffect(match, isPreview = false) {
-            const overlay = document.getElementById('flash-overlay');
-            overlay.style.zIndex = isPreview ? "800" : "500";
+            if (!match) return;
             showFlash(match.label, match.colorName || "黒", match.images || []); 
             if (match.audioMode === "tts") {
                 speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0, match.ttsPitch || 1.0);
@@ -197,26 +186,25 @@
             overlay.style.backgroundColor = bgColor;
             fText.innerText = text;
             imgContainer.innerHTML = '';
-            imgContainer.className = '';
 
-            // 文字サイズ調整（自動縮小ロジック）
+            // 文字サイズ自動調整ロジック (事前選果モード)
             if (currentMode === "pre") {
                 fTextCell.style.height = "100%";
                 imgCell.style.display = "none";
-                // 3文字以上ならさらに小さく、そうでなければ大きく
-                let baseSize = text.length > 3 ? (80 / text.length) : 25;
-                fText.style.fontSize = baseSize + "vh";
+                // 文字数に応じてサイズを可変
+                let size = 25;
+                if (text.length >= 3) size = 25 * (3 / text.length);
+                fText.style.fontSize = size + "vh";
             } else {
                 fTextCell.style.height = "20%";
                 imgCell.style.display = "flex";
                 fText.style.fontSize = text.length > 5 ? "8vh" : "14vh";
 
-                // 田の字グリッド固定レイアウト
-                imgContainer.classList.add('grid-layout');
+                // 田の字グリッド固定 (画像がなくても枠を維持)
                 for (let i = 0; i < 4; i++) {
                     const slot = document.createElement('div');
                     slot.className = 'grid-slot';
-                    if (imgArray[i]) {
+                    if (imgArray && imgArray[i]) {
                         const img = document.createElement('img');
                         img.src = imgArray[i];
                         img.className = 'flash-img-item';
@@ -231,7 +219,7 @@
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1500 : 3500);
         }
 
-        // Bluetooth接続（V1.02の安定版を継承）
+        // Bluetoothメインロジック (V1.02の安定版)
         document.getElementById('connectBtn').onclick = async () => {
             await activateNoSleep();
             try {
@@ -326,9 +314,9 @@
                         <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('')}</select></div>
                     </div>
                     <div class="image-slots">${slots}</div>
-                    <div class="action-row" style="display:flex; gap:10px; margin-top:10px;">
+                    <div style="display:flex; gap:10px; margin-top:10px;">
                         <button style="flex:1; background:#ff4757; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold;" onclick="currentRanges.splice(${i},1);renderConfigList()">削除</button>
-                        <button style="flex:1; background:#28a745; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold;" onclick="triggerEffect(currentRanges[i], true)">プレビュー</button>
+                        <button style="flex:1; background:#28a745; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold;" onclick='triggerEffect(currentRanges[${i}], true)'>プレビュー</button>
                     </div>`;
                 area.appendChild(div);
             });
