@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>はよ選果 V2.01</title>
+    <title>はよ選果 V2.00</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -75,7 +75,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.01</div>
+            <div id="app-title">はよ選果 V2.00</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -183,108 +183,6 @@
         function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('設定を保存しました'); }
         function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',ttsRate:1.0,ttsPitch:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
 
-        // --- Bluetooth & 判定ロジック (2通目のコードを適用) ---
-        let bluetoothChar = null, stableWeight = 0, weightHistory = [], currentWeight = 0;
-        
-        document.getElementById('connectBtn').onclick = async () => {
-            await activateNoSleep();
-            try {
-                if(sounds["start"]) sounds["start"].play();
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'はよ選果' }, { namePrefix: 'ESP32_Strawberry_Scale' }],
-                    optionalServices: [SERVICE_UUID]
-                });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
-                await bluetoothChar.startNotifications();
-                document.getElementById('status').innerText = "✅ 稼働中";
-                
-                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
-                    const val = new TextDecoder().decode(e.target.value);
-                    const w = parseFloat(val);
-                    currentWeight = w;
-                    document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
-                    
-                    weightHistory.push(w);
-                    if (weightHistory.length > 3) weightHistory.shift();
-                    
-                    if (weightHistory.length === 3) {
-                        const maxW = Math.max(...weightHistory);
-                        const minW = Math.min(...weightHistory);
-                        if (maxW - minW < 0.2) {
-                            if (Math.abs(stableWeight - w) > 0.5) { 
-                                if (stableWeight > w) {
-                                    const diff = stableWeight - w;
-                                    if(diff >= 5.0) {
-                                        document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
-                                        const match = currentRanges.find(r => diff >= r.min);
-                                        if (match) triggerEffect(match);
-                                    }
-                                }
-                                stableWeight = w;
-                            }
-                        }
-                    }
-                });
-            } catch (err) { alert("秤が見つかりません: " + err); }
-        };
-
-        document.getElementById('tareBtn').onclick = () => {
-            stableWeight = currentWeight;
-            document.getElementById('diff-display').innerText = "基準リセット";
-            // 必要に応じてESP32側にリセット命令を送る場合
-            if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')).catch(e=>{});
-        };
-        // ---------------------------------------------------
-
-        document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; window.scrollTo(0, 0); };
-        document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
-        document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
-
-        function updateTtsVal(idx, prop, val) { const v = Math.min(Math.max(parseFloat(val), 0.1), 2.0); currentRanges[idx][prop] = parseFloat(v.toFixed(1)); renderConfigList(); }
-
-        function triggerEffect(match, isPreview = false) {
-            const overlay = document.getElementById('flash-overlay');
-            overlay.style.zIndex = isPreview ? "800" : "500";
-            showFlash(match.label, match.colorName || "黒", match.images || []); 
-            if (match.audioMode === "tts") speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0, match.ttsPitch || 1.0);
-            else { const ck = toHalfWidth(match.audio); if (sounds[ck]) { sounds[ck].currentTime = 0; sounds[ck].play(); } }
-        }
-
-        function showFlash(text, colorName, imgArray) {
-            const overlay = document.getElementById('flash-overlay');
-            const fTextCell = document.getElementById('flash-text-cell'), fText = document.getElementById('flash-text');
-            const imgCell = document.getElementById('flash-img-cell'), imgContainer = document.getElementById('flash-img-container');
-            const bgColor = colorPalette[colorName] || "#000000";
-            const activeImages = imgArray.filter(src => src !== null);
-            overlay.style.backgroundColor = bgColor; fText.innerText = text;
-            imgContainer.innerHTML = ''; imgContainer.className = '';
-            if (currentMode === "pre" || activeImages.length === 0) {
-                fTextCell.style.height = "100%"; fTextCell.style.display = "flex"; imgCell.style.display = "none"; fText.style.fontSize = "25vh"; 
-            } else {
-                fTextCell.style.height = "20%"; fTextCell.style.display = "flex"; imgCell.style.display = "flex"; fText.style.fontSize = "14vh";
-                if (imgArray.length >= 3 && activeImages.length >= 3) {
-                    imgContainer.classList.add('grid-layout');
-                    ['tl', 'tr', 'bl', 'br'].forEach((pos, i) => {
-                        const gridItem = document.createElement('div');
-                        if (pos === 'tl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-end"; }
-                        if (pos === 'tr') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-end"; }
-                        if (pos === 'bl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-start"; }
-                        if (pos === 'br') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-start"; }
-                        if (imgArray[i]) { const img = document.createElement('img'); img.src = imgArray[i]; img.className = 'flash-img-item'; gridItem.appendChild(img); }
-                        imgContainer.appendChild(gridItem);
-                    });
-                } else {
-                    activeImages.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item'; img.style.maxWidth = activeImages.length === 1 ? "100%" : "48%"; imgContainer.appendChild(img); });
-                }
-            }
-            overlay.style.display = 'flex';
-            if (window.flashTimer) clearTimeout(window.flashTimer);
-            window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1200 : 3500);
-        }
-
-        // --- 同期・設定画面描画 (1通目のコードを維持) ---
         async function syncToGas() {
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "データ送信中..."; qrDiv.innerHTML = '';
@@ -331,6 +229,7 @@
             } catch (err) { alert("カメラ起動失敗"); }
         }
 
+        // ★ V1.20修正: 写真（画像ファイル）からQRを解析する関数を追加
         function readQrFromFile(event) {
             const file = event.target.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -349,6 +248,74 @@
             };
             reader.readAsDataURL(file);
         }
+
+        function triggerEffect(match, isPreview = false) {
+            const overlay = document.getElementById('flash-overlay');
+            overlay.style.zIndex = isPreview ? "800" : "500";
+            showFlash(match.label, match.colorName || "黒", match.images || []); 
+            if (match.audioMode === "tts") speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0, match.ttsPitch || 1.0);
+            else { const ck = toHalfWidth(match.audio); if (sounds[ck]) { sounds[ck].currentTime = 0; sounds[ck].play(); } }
+        }
+
+        function showFlash(text, colorName, imgArray) {
+            const overlay = document.getElementById('flash-overlay');
+            const fTextCell = document.getElementById('flash-text-cell'), fText = document.getElementById('flash-text');
+            const imgCell = document.getElementById('flash-img-cell'), imgContainer = document.getElementById('flash-img-container');
+            const bgColor = colorPalette[colorName] || "#000000";
+            const activeImages = imgArray.filter(src => src !== null);
+            overlay.style.backgroundColor = bgColor; fText.innerText = text;
+            imgContainer.innerHTML = ''; imgContainer.className = '';
+            if (currentMode === "pre" || activeImages.length === 0) {
+                fTextCell.style.height = "100%"; fTextCell.style.display = "flex"; imgCell.style.display = "none"; fText.style.fontSize = "25vh"; 
+            } else {
+                fTextCell.style.height = "20%"; fTextCell.style.display = "flex"; imgCell.style.display = "flex"; fText.style.fontSize = "14vh";
+                if (imgArray.length >= 3 && activeImages.length >= 3) {
+                    imgContainer.classList.add('grid-layout');
+                    ['tl', 'tr', 'bl', 'br'].forEach((pos, i) => {
+                        const gridItem = document.createElement('div');
+                        if (pos === 'tl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-end"; }
+                        if (pos === 'tr') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-end"; }
+                        if (pos === 'bl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-start"; }
+                        if (pos === 'br') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-start"; }
+                        if (imgArray[i]) { const img = document.createElement('img'); img.src = imgArray[i]; img.className = 'flash-img-item'; gridItem.appendChild(img); }
+                        imgContainer.appendChild(gridItem);
+                    });
+                } else {
+                    activeImages.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item'; img.style.maxWidth = activeImages.length === 1 ? "100%" : "48%"; imgContainer.appendChild(img); });
+                }
+            }
+            overlay.style.display = 'flex';
+            if (window.flashTimer) clearTimeout(window.flashTimer);
+            window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1200 : 3500);
+        }
+
+        let bluetoothChar = null, stableWeight = 0, weightHistory = [];
+        document.getElementById('connectBtn').onclick = async () => {
+            await activateNoSleep();
+            try {
+                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
+                await bluetoothChar.startNotifications();
+                document.getElementById('status').innerText = "✅ 稼働中";
+                if(sounds["start"]) sounds["start"].play();
+                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
+                    const w = parseFloat(new TextDecoder().decode(e.target.value));
+                    document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
+                    weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
+                    if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
+                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) { const diff = stableWeight - w; if(diff>=5.0){ document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減"; const match = currentRanges.find(r => diff >= r.min); if (match) triggerEffect(match); } } stableWeight = w; }
+                    }
+                });
+            } catch (err) { alert("秤が見つかりません"); }
+        };
+        document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; window.scrollTo(0, 0); };
+        document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
+        document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
+        document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
+
+        function updateTtsVal(idx, prop, val) { const v = Math.min(Math.max(parseFloat(val), 0.1), 2.0); currentRanges[idx][prop] = parseFloat(v.toFixed(1)); renderConfigList(); }
 
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
@@ -394,3 +361,4 @@
     </script>
 </body>
 </html>
+
