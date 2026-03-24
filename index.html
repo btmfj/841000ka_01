@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V2.01</title>
+    <title>イチゴ選別システム V2.00</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -75,7 +75,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.01</div>
+            <div id="app-title">はよ選果 V2.00</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -97,7 +97,7 @@
     
     <div id="settings-modal" class="modal">
         <div class="modal-header">
-            <div class="modal-title">設定 (V2.01)</div>
+            <div class="modal-title">設定 (V2.00)</div>
             <div class="header-btn-group">
                 <button class="header-btn save-btn" onclick="saveConfig()">保存</button>
                 <button class="header-btn back-btn" onclick="document.getElementById('settings-modal').style.display='none'">戻る</button>
@@ -130,7 +130,7 @@
     <script>
         const STORAGE_KEY = 'strawberry_config_v200'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-        const CHARACTERISTIC_UUID = "beb5483e-36e1-4588-b7f5-ea07361b26a8";
+        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzoXz3vQvQOg6TIR0cshy5N6ysqWC-AODRzlCmN2Cr-WPK3hgOr3zCVPZ_kMgNqYu_U/exec";
         let currentRanges = [], sounds = {}, currentMode = "pre";
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2L", "2L大", "2L小", "3L", "L", "L大", "L小", "M", "M大", "M小", "S", "S大", "S小", "a", "aa", "b", "dx", "ex", "g"];
@@ -288,60 +288,27 @@
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1200 : 3500);
         }
 
-        // --- V1.17 互換のBluetoothロジック ---
         let bluetoothChar = null, stableWeight = 0, weightHistory = [];
-        
-        async function connectBluetooth() {
+        document.getElementById('connectBtn').onclick = async () => {
+            await activateNoSleep();
             try {
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'はよ選果' }],
-                    optionalServices: [SERVICE_UUID]
-                });
+                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(SERVICE_UUID);
                 bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
-                
                 await bluetoothChar.startNotifications();
                 document.getElementById('status').innerText = "✅ 稼働中";
                 if(sounds["start"]) sounds["start"].play();
-
-                bluetoothChar.addEventListener('characteristicvaluechanged', (event) => {
-                    const val = new TextDecoder().decode(event.target.value);
-                    const w = parseFloat(val);
-                    if (isNaN(w)) return;
-
+                bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
+                    const w = parseFloat(new TextDecoder().decode(e.target.value));
                     document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
-
-                    weightHistory.push(w);
-                    if (weightHistory.length > 3) weightHistory.shift();
-
+                    weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
                     if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
-                        const currentW = weightHistory[2];
-                        if (Math.abs(stableWeight - currentW) > 0.5) {
-                            if (stableWeight > currentW) {
-                                const diff = stableWeight - currentW;
-                                if (diff >= 5.0) {
-                                    document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減";
-                                    const match = currentRanges.find(r => diff >= r.min);
-                                    if (match) triggerEffect(match);
-                                }
-                            }
-                            stableWeight = currentW;
-                        }
+                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) { const diff = stableWeight - w; if(diff>=5.0){ document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減"; const match = currentRanges.find(r => diff >= r.min); if (match) triggerEffect(match); } } stableWeight = w; }
                     }
                 });
-            } catch (err) {
-                console.error(err);
-                alert("秤が見つかりません: " + err);
-            }
-        }
-
-        document.getElementById('connectBtn').onclick = async () => {
-            await activateNoSleep();
-            await connectBluetooth();
+            } catch (err) { alert("秤が見つかりません"); }
         };
-        // ------------------------------------
-
         document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; window.scrollTo(0, 0); };
         document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
@@ -382,8 +349,7 @@
             const reader = new FileReader(); reader.onload = (f) => {
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
-                    const cvs = document.createElement('canvas');
-                    const maxSide = 600;
+                    const cvs = document.createElement('canvas'), ctx = cvs.createElement('2d'), maxSide = 600;
                     const sc = Math.min(maxSide/img.width, maxSide/img.height, 1.0);
                     cvs.width = img.width*sc; cvs.height = img.height*sc;
                     const ctx2 = cvs.getContext('2d'); ctx2.drawImage(img, 0, 0, cvs.width, cvs.height);
@@ -394,3 +360,5 @@
     </script>
 </body>
 </html>
+
+
