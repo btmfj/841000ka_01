@@ -349,11 +349,14 @@
             const reader = new FileReader(); reader.onload = (f) => {
                 const img = new Image(); img.src = f.target.result;
                 img.onload = () => {
-                    const cvs = document.createElement('canvas'), ctx = cvs.createElement('2d'), maxSide = 600;
+                    const cvs = document.createElement('canvas'), maxSide = 600;
                     const sc = Math.min(maxSide/img.width, maxSide/img.height, 1.0);
-                    cvs.width = img.width*sc; cvs.height = img.height*sc;
-                    const ctx2 = cvs.getContext('2d'); ctx2.drawImage(img, 0, 0, cvs.width, cvs.height);
-                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.85); renderConfigList();
+                    cvs.width = img.width * sc;
+                    cvs.height = img.height * sc;
+                    const ctx = cvs.getContext('2d'); 
+                    ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+                    currentRanges[i].images[sIdx] = cvs.toDataURL('image/jpeg', 0.85); 
+                    renderConfigList();
                 };
             }; reader.readAsDataURL(file);
         }
