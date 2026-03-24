@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>はよ選果 V2.00</title>
+    <title>はよ選果 V2.01</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -75,7 +75,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.20</div>
+            <div id="app-title">はよ選果 V2.01</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -229,7 +229,6 @@
             } catch (err) { alert("カメラ起動失敗"); }
         }
 
-        // ★ V1.20修正: 写真（画像ファイル）からQRを解析する関数を追加
         function readQrFromFile(event) {
             const file = event.target.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -290,26 +289,65 @@
         }
 
         let bluetoothChar = null, stableWeight = 0, weightHistory = [];
+
+        // ★ Bluetooth接続処理の修正
         document.getElementById('connectBtn').onclick = async () => {
+            const statusEl = document.getElementById('status');
             await activateNoSleep();
             try {
-                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'はよ選果' }], optionalServices: [SERVICE_UUID] });
+                statusEl.innerText = "🔍 デバイスを探しています...";
+                const device = await navigator.bluetooth.requestDevice({ 
+                    filters: [{ namePrefix: 'はよ選果' }], 
+                    optionalServices: [SERVICE_UUID] 
+                });
+                
+                statusEl.innerText = "接続中...";
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(SERVICE_UUID);
                 bluetoothChar = await service.getCharacteristic(CHARACTERISTIC_UUID);
+                
                 await bluetoothChar.startNotifications();
-                document.getElementById('status').innerText = "✅ 稼働中";
+                statusEl.innerText = "✅ 稼働中";
                 if(sounds["start"]) sounds["start"].play();
+
                 bluetoothChar.addEventListener('characteristicvaluechanged', (e) => {
                     const w = parseFloat(new TextDecoder().decode(e.target.value));
+                    if (isNaN(w)) return;
                     document.getElementById('weight').innerHTML = `${w.toFixed(1)}<span>g</span>`;
-                    weightHistory.push(w); if (weightHistory.length > 3) weightHistory.shift();
+                    
+                    weightHistory.push(w); 
+                    if (weightHistory.length > 3) weightHistory.shift();
+                    
                     if (weightHistory.length === 3 && Math.max(...weightHistory) - Math.min(...weightHistory) < 0.2) {
-                        if (Math.abs(stableWeight - w) > 0.5) { if (stableWeight > w) { const diff = stableWeight - w; if(diff>=5.0){ document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減"; const match = currentRanges.find(r => diff >= r.min); if (match) triggerEffect(match); } } stableWeight = w; }
+                        if (Math.abs(stableWeight - w) > 0.5) { 
+                            if (stableWeight > w) { 
+                                const diff = stableWeight - w; 
+                                if(diff >= 5.0){ 
+                                    document.getElementById('diff-display').innerText = diff.toFixed(1) + " g 減"; 
+                                    const match = currentRanges.find(r => diff >= r.min); 
+                                    if (match) triggerEffect(match); 
+                                } 
+                            } 
+                            stableWeight = w; 
+                        }
                     }
                 });
-            } catch (err) { alert("秤が見つかりません"); }
+
+                device.addEventListener('gattserverdisconnected', () => {
+                    statusEl.innerText = "❌ 切断されました";
+                });
+
+            } catch (err) { 
+                console.error(err);
+                if (err.name === 'NotFoundError') {
+                    statusEl.innerText = "キャンセルされました";
+                } else {
+                    alert("接続エラー: " + err.message);
+                    statusEl.innerText = "❌ 接続エラー";
+                }
+            }
         };
+
         document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; window.scrollTo(0, 0); };
         document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
@@ -361,4 +399,3 @@
     </script>
 </body>
 </html>
-
