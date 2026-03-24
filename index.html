@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.18</title>
+    <title>イチゴ選別システム V1.17</title>
     <style>
+        /* 既存スタイル維持 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
         #weight-section { text-align: center; margin: 0; flex-shrink: 0; width: 100%; }
@@ -21,13 +22,10 @@
         #flash-img-container { width: 100%; height: 100%; max-width: 80vh; margin: 0 auto; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; overflow: hidden; }
         
         #flash-img-container.grid-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 15px; padding: 10px; box-sizing: border-box; aspect-ratio: 1 / 1; width: auto; height: 100%; }
+        #flash-img-container.grid-layout div { position: relative; display: flex; width: 100%; height: 100%; overflow: hidden; background: transparent; border-radius: 8px; }
+        .flash-img-item { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
         
-        /* ★ V1.18修正: 画像を囲む枠の角丸（border-radius）を 0 に設定 */
-        #flash-img-container.grid-layout div { position: relative; display: flex; width: 100%; height: 100%; overflow: hidden; background: transparent; border-radius: 0px; }
-        
-        /* ★ V1.18修正: 画像自体の角丸設定もなし（直角）に変更 */
-        .flash-img-item { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 0px; }
-        
+        /* ボタン・設定画面スタイル */
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
         .my-button { width: 100%; height: 65px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; margin: 6px 0; cursor: pointer; transition: 0.1s; }
         #connectBtn { background-color: #28a745; box-shadow: 0 5px #1e7e34; }
@@ -47,6 +45,7 @@
         .guide-label { font-size: 15px; font-weight: bold; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; }
         .config-inputs input, .config-inputs select { height: 45px; font-size: 18px; font-weight: bold; border: 1px solid #999; border-radius: 8px; padding: 0 5px; }
         
+        /* TTSコントロール用スタイル */
         .tts-control-box { background: #eef2ff; padding: 10px; border-radius: 10px; margin-top: 5px; width: 100%; box-sizing: border-box; border: 1px solid #c7d2fe; }
         .tts-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; width: 100%; }
         .tts-row label { font-size: 13px; font-weight: bold; min-width: 50px; }
@@ -76,7 +75,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.18</div>
+            <div id="app-title">はよ選果 V1.17</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -121,9 +120,9 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script>
-        const STORAGE_KEY = 'strawberry_config_v118'; 
+        const STORAGE_KEY = 'strawberry_config_v117'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-        const CHARACTERISTIC_UUID = "beb5483e-36e1-4588-b7f5-ea07361b26a8";
+        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzoXz3vQvQOg6TIR0cshy5N6ysqWC-AODRzlCmN2Cr-WPK3hgOr3zCVPZ_kMgNqYu_U/exec";
         let currentRanges = [], sounds = {}, currentMode = "pre";
         const availableAudios = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "2L", "2L大", "2L小", "3L", "L", "L大", "L小", "M", "M大", "M小", "S", "S大", "S小", "a", "aa", "b", "dx", "ex", "g"];
@@ -152,7 +151,12 @@
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
             currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2L", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", ttsRate: 1.0, ttsPitch: 1.0, colorName: "青", images: [null, null, null, null] }];
-            currentRanges = currentRanges.map(r => { if(r.audio) r.audio = toHalfWidth(r.audio); if(r.ttsRate === undefined) r.ttsRate = 1.0; if(r.ttsPitch === undefined) r.ttsPitch = 1.0; return r; });
+            currentRanges = currentRanges.map(r => { 
+                if(r.audio) r.audio = toHalfWidth(r.audio); 
+                if(r.ttsRate === undefined) r.ttsRate = 1.0; 
+                if(r.ttsPitch === undefined) r.ttsPitch = 1.0; 
+                return r; 
+            });
             currentRanges.sort((a, b) => b.min - a.min);
             refreshSounds();
         }
@@ -160,7 +164,12 @@
 
         function refreshSounds() {
             sounds = {};
-            currentRanges.forEach(r => { if ((!r.audioMode || r.audioMode === "mp3") && r.audio) { const ck = toHalfWidth(r.audio); if(!sounds[ck]) sounds[ck] = new Audio("./" + getFileName(ck)); } });
+            currentRanges.forEach(r => {
+                if ((!r.audioMode || r.audioMode === "mp3") && r.audio) {
+                    const ck = toHalfWidth(r.audio);
+                    if(!sounds[ck]) sounds[ck] = new Audio("./" + getFileName(ck));
+                }
+            });
             sounds["start"] = new Audio("./start.mp3");
         }
 
@@ -168,8 +177,12 @@
             if (!text) return;
             window.speechSynthesis.cancel();
             const uttr = new SpeechSynthesisUtterance(text);
-            uttr.rate = rate; uttr.pitch = pitch;
-            if (voices.length > 0) { const target = gender === "male" ? ["Male", "Otoya", "Ichiro"] : ["Female", "Kyoko", "Hanako"]; uttr.voice = voices.find(v => target.some(n => v.name.includes(n))) || voices[0]; }
+            uttr.rate = rate;
+            uttr.pitch = pitch;
+            if (voices.length > 0) {
+                const target = gender === "male" ? ["Male", "Otoya", "Ichiro"] : ["Female", "Kyoko", "Hanako"];
+                uttr.voice = voices.find(v => target.some(n => v.name.includes(n))) || voices[0];
+            }
             window.speechSynthesis.speak(uttr);
         }
 
@@ -180,11 +193,17 @@
             const loader = document.getElementById('loader'), msg = document.getElementById('sync-msg'), qrDiv = document.getElementById('qrcode');
             loader.style.display = 'block'; msg.innerText = "データ送信中..."; qrDiv.innerHTML = '';
             const syncId = 'STRW-' + Math.random().toString(36).substring(2, 10);
-            try { await fetch(`${GAS_URL}?id=${syncId}`, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(currentRanges) }); loader.style.display = 'none'; new QRCode(qrDiv, { text: syncId, width: 160, height: 160 }); msg.style.color = "#22c55e"; msg.innerText = "✅ 作成完了 ID: " + syncId; } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ 送信エラー"; }
+            try {
+                await fetch(`${GAS_URL}?id=${syncId}`, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(currentRanges) });
+                loader.style.display = 'none';
+                new QRCode(qrDiv, { text: syncId, width: 160, height: 160 });
+                msg.style.color = "#22c55e"; msg.innerText = "✅ 作成完了 ID: " + syncId;
+            } catch (err) { loader.style.display = 'none'; msg.innerText = "❌ 送信エラー"; }
         }
 
         async function processSync(syncId) {
-            const msg = document.getElementById('sync-msg'); msg.style.color = "#000"; msg.innerText = "同期開始...";
+            const msg = document.getElementById('sync-msg');
+            msg.style.color = "#000"; msg.innerText = "同期開始...";
             try {
                 const countRes = await fetch(`${GAS_URL}?id=${syncId}&mode=count`, { mode: "cors", cache: "no-store" });
                 const count = parseInt(await countRes.text());
@@ -287,7 +306,11 @@
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
 
-        function updateTtsVal(idx, prop, val) { const v = Math.min(Math.max(parseFloat(val), 0.1), 2.0); currentRanges[idx][prop] = parseFloat(v.toFixed(1)); renderConfigList(); }
+        function updateTtsVal(idx, prop, val) {
+            const v = Math.min(Math.max(parseFloat(val), 0.1), 2.0);
+            currentRanges[idx][prop] = parseFloat(v.toFixed(1));
+            renderConfigList();
+        }
 
         function renderConfigList() {
             const area = document.getElementById('config-list'); area.innerHTML = '';
@@ -298,16 +321,40 @@
                     const img = r.images[j];
                     slots += `<div class="slot">${img?`<img src="${img}"><button class="slot-del" onclick="currentRanges[${i}].images[${j}]=null;renderConfigList()">×</button>`:`<label>＋<input type="file" style="display:none" onchange="addImg(event,${i},${j})"></label>`}</div>`;
                 }
-                let ttsControl = (r.audioMode === "tts") ? `
-                    <div class="tts-control-box">
-                        <div class="tts-row"><label>ピッチ</label><button class="step-btn" onclick="updateTtsVal(${i},'ttsPitch',${r.ttsPitch}-0.1)">-</button><input type="range" class="tts-slider" min="0.1" max="2.0" step="0.1" value="${r.ttsPitch}" oninput="updateTtsVal(${i},'ttsPitch',this.value)"><button class="step-btn" onclick="updateTtsVal(${i},'ttsPitch',${r.ttsPitch}+0.1)">+</button><span class="val-disp">${r.ttsPitch.toFixed(1)}</span></div>
-                        <div class="tts-row"><label>速さ</label><button class="step-btn" onclick="updateTtsVal(${i},'ttsRate',${r.ttsRate}-0.1)">-</button><input type="range" class="tts-slider" min="0.1" max="2.0" step="0.1" value="${r.ttsRate}" oninput="updateTtsVal(${i},'ttsRate',this.value)"><button class="step-btn" onclick="updateTtsVal(${i},'ttsRate',${r.ttsRate}+0.1)">+</button><span class="val-disp">${r.ttsRate.toFixed(1)}</span></div>
-                    </div>` : '';
+                
+                let ttsControl = '';
+                if(r.audioMode === "tts") {
+                    ttsControl = `
+                        <div class="tts-control-box">
+                            <div class="tts-row">
+                                <label>ピッチ</label>
+                                <button class="step-btn" onclick="updateTtsVal(${i},'ttsPitch',${r.ttsPitch}-0.1)">-</button>
+                                <input type="range" class="tts-slider" min="0.1" max="2.0" step="0.1" value="${r.ttsPitch}" oninput="updateTtsVal(${i},'ttsPitch',this.value)">
+                                <button class="step-btn" onclick="updateTtsVal(${i},'ttsPitch',${r.ttsPitch}+0.1)">+</button>
+                                <span class="val-disp">${r.ttsPitch.toFixed(1)}</span>
+                            </div>
+                            <div class="tts-row">
+                                <label>速さ</label>
+                                <button class="step-btn" onclick="updateTtsVal(${i},'ttsRate',${r.ttsRate}-0.1)">-</button>
+                                <input type="range" class="tts-slider" min="0.1" max="2.0" step="0.1" value="${r.ttsRate}" oninput="updateTtsVal(${i},'ttsRate',this.value)">
+                                <button class="step-btn" onclick="updateTtsVal(${i},'ttsRate',${r.ttsRate}+0.1)">+</button>
+                                <span class="val-disp">${r.ttsRate.toFixed(1)}</span>
+                            </div>
+                        </div>`;
+                }
+
                 div.innerHTML = `
                     <div class="config-inputs">
                         <div class="input-group"><span class="guide-label">重さ：</span><input type="number" step="0.1" value="${r.min}" oninput="currentRanges[${i}].min=parseFloat(this.value)"> g〜</div>
                         <div class="input-group"><span class="guide-label">表示：</span><input type="text" value="${r.label}" oninput="currentRanges[${i}].label=this.value"></div>
-                        <div class="input-group"><span class="guide-label">音声：</span><select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();"><option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>登録音声</option><option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option></select>${(r.audioMode === "tts") ? `<input type="text" value="${r.ttsText || ''}" style="width:70px;" placeholder="読上げ文字" oninput="currentRanges[${i}].ttsText=this.value">` : `<select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option value="${a}" ${toHalfWidth(a)==toHalfWidth(r.audio)?'selected':''}>${a.toUpperCase()}</option>`).join('')}</select>`}</div>
+                        <div class="input-group">
+                            <span class="guide-label">音声：</span>
+                            <select onchange="currentRanges[${i}].audioMode=this.value; renderConfigList();">
+                                <option value="mp3" ${(!r.audioMode || r.audioMode==='mp3')?'selected':''}>登録音声</option>
+                                <option value="tts" ${r.audioMode==='tts'?'selected':''}>読み上げ</option>
+                            </select>
+                            ${(r.audioMode === "tts") ? `<input type="text" value="${r.ttsText || ''}" style="width:70px;" placeholder="読上げ文字" oninput="currentRanges[${i}].ttsText=this.value">` : `<select onchange="currentRanges[${i}].audio=this.value">${availableAudios.map(a=>`<option value="${a}" ${toHalfWidth(a)==toHalfWidth(r.audio)?'selected':''}>${a.toUpperCase()}</option>`).join('')}</select>`}
+                        </div>
                         ${ttsControl}
                         <div class="input-group"><span class="guide-label">背景色：</span><select onchange="currentRanges[${i}].colorName=this.value">${Object.keys(colorPalette).map(c => `<option value="${c}" ${r.colorName===c?'selected':''}>${c}</option>`).join('')}</select></div>
                     </div>
