@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.19</title>
+    <title>イチゴ選別システム V1.20</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -32,7 +32,6 @@
         .mode-btn.active { background: #d63031; color: #fff; }
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
         
-        /* 設定モーダルのスタイル修正 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; box-sizing: border-box; overflow-y: auto; padding-top: 70px; }
         .modal-header { position: fixed; top: 0; left: 0; width: 100%; height: 70px; background: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding: 0 15px; box-sizing: border-box; z-index: 700; }
         .modal-title { font-size: 22px; font-weight: bold; }
@@ -76,7 +75,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.19</div>
+            <div id="app-title">はよ選果 V1.20</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -129,7 +128,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script>
-        const STORAGE_KEY = 'strawberry_config_v119'; 
+        const STORAGE_KEY = 'strawberry_config_v120'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4588-b7f5-ea07361b26a8";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzoXz3vQvQOg6TIR0cshy5N6ysqWC-AODRzlCmN2Cr-WPK3hgOr3zCVPZ_kMgNqYu_U/exec";
@@ -216,10 +215,7 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
                 canvas.style.display = "block";
-                
-                // ★ V1.19修正: カメラ起動時にモニター位置まで自動スクロール
                 document.getElementById('qr-camera-area').scrollIntoView({ behavior: 'smooth' });
-
                 const tick = () => {
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
                         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
@@ -231,6 +227,26 @@
                 };
                 requestAnimationFrame(tick);
             } catch (err) { alert("カメラ起動失敗"); }
+        }
+
+        // ★ V1.20修正: 写真（画像ファイル）からQRを解析する関数を追加
+        function readQrFromFile(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
+                    canvas.width = img.width; canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    if (code && code.data.startsWith("STRW-")) { processSync(code.data); }
+                    else { alert("画像からQRコードを読み取れませんでした。"); }
+                };
+                img.src = f.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
         function triggerEffect(match, isPreview = false) {
