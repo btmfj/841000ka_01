@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イチゴ選別システム V1.18</title>
+    <title>イチゴ選別システム V1.19</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -19,13 +19,8 @@
         #flash-text { font-size: 14vh; font-weight: bold; color: #fff; margin: 0; text-align: center; width: 100%; white-space: nowrap; }
         #flash-img-cell { width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-grow: 1; height: 0; }
         #flash-img-container { width: 100%; height: 100%; max-width: 80vh; margin: 0 auto; position: relative; display: flex; justify-content: center; align-items: center; gap: 4px; overflow: hidden; }
-        
         #flash-img-container.grid-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 15px; padding: 10px; box-sizing: border-box; aspect-ratio: 1 / 1; width: auto; height: 100%; }
-        
-        /* ★ V1.18修正: 画像を囲む枠の角丸（border-radius）を 0 に設定 */
         #flash-img-container.grid-layout div { position: relative; display: flex; width: 100%; height: 100%; overflow: hidden; background: transparent; border-radius: 0px; }
-        
-        /* ★ V1.18修正: 画像自体の角丸設定もなし（直角）に変更 */
         .flash-img-item { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 0px; }
         
         .btn-container { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 15px; flex-shrink: 0; }
@@ -37,11 +32,16 @@
         .mode-btn.active { background: #d63031; color: #fff; }
         #settingsBtn { background: #6c757d; height: 50px; font-size: 16px; margin-top: 5px; }
         
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; padding: 15px; box-sizing: border-box; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-        .modal-title { font-size: 26px; font-weight: bold; }
-        .close-btn { font-size: 35px; border: none; background: none; color: #666; cursor: pointer; padding: 0 10px; }
+        /* 設定モーダルのスタイル修正 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; box-sizing: border-box; overflow-y: auto; padding-top: 70px; }
+        .modal-header { position: fixed; top: 0; left: 0; width: 100%; height: 70px; background: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding: 0 15px; box-sizing: border-box; z-index: 700; }
+        .modal-title { font-size: 22px; font-weight: bold; }
+        .header-btn-group { display: flex; gap: 10px; }
+        .header-btn { height: 45px; padding: 0 15px; border-radius: 10px; border: none; color: white; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .save-btn { background-color: #28a745; }
+        .back-btn { background-color: #ff4757; }
         
+        .modal-content { padding: 15px; }
         .config-row { border: 2px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: #fafafa; }
         .input-group { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
         .guide-label { font-size: 15px; font-weight: bold; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; }
@@ -76,7 +76,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V1.18</div>
+            <div id="app-title">はよ選果 V1.19</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -95,33 +95,41 @@
             <button id="settingsBtn" class="my-button">🛠 設定</button>
         </div>
     </div>
+    
     <div id="settings-modal" class="modal">
         <div class="modal-header">
             <div class="modal-title">設定</div>
-            <button class="close-btn" onclick="document.getElementById('settings-modal').style.display='none'">✕</button>
+            <div class="header-btn-group">
+                <button class="header-btn save-btn" onclick="saveConfig()">保存</button>
+                <button class="header-btn back-btn" onclick="document.getElementById('settings-modal').style.display='none'">戻る</button>
+            </div>
         </div>
-        <div id="config-list"></div>
-        <button onclick="addRangeRow()" style="width:100%; padding:15px; margin-top:10px; border-radius:12px; font-size:20px; font-weight:bold; background:#e0e0e0; border:none; cursor:pointer;">＋ 判定範囲を追加</button>
-        <button class="my-button" style="background:#28a745; margin-top:15px;" onclick="saveConfig()">✅ 本体に保存</button>
-        <div class="share-card">
-            <h3>設定の同期</h3>
-            <button class="my-button sync-button" style="background:#10b981;" onclick="syncToGas()">QRコードの作成</button>
-            <div id="loader" class="loader"></div>
-            <div id="qrcode"></div>
-            <p id="sync-msg" style="font-size:14px; font-weight:bold;"></p>
-            <hr style="margin:20px 0; border:0; border-top:2px dashed #10b981; opacity:0.3;">
-            <button class="my-button sync-button" style="background:#3b82f6;" onclick="scanGasQR()">カメラでQR読込</button>
-            <button class="my-button sync-button" style="background:#6366f1;" onclick="document.getElementById('qr-file-input').click()">写真からQR読込</button>
-            <input type="file" id="qr-file-input" accept="image/*" onchange="readQrFromFile(event)" style="display:none">
-            <canvas id="v-canvas"></canvas>
+        <div class="modal-content">
+            <div id="config-list"></div>
+            <button onclick="addRangeRow()" style="width:100%; padding:15px; margin-top:10px; border-radius:12px; font-size:20px; font-weight:bold; background:#e0e0e0; border:none; cursor:pointer;">＋ 判定範囲を追加</button>
+            
+            <div class="share-card">
+                <h3>設定の同期</h3>
+                <button class="my-button sync-button" style="background:#10b981;" onclick="syncToGas()">QRコードの作成</button>
+                <div id="loader" class="loader"></div>
+                <div id="qrcode"></div>
+                <p id="sync-msg" style="font-size:14px; font-weight:bold;"></p>
+                <hr style="margin:20px 0; border:0; border-top:2px dashed #10b981; opacity:0.3;">
+                <button class="my-button sync-button" style="background:#3b82f6;" onclick="scanGasQR()">カメラでQR読込</button>
+                <button class="my-button sync-button" style="background:#6366f1;" onclick="document.getElementById('qr-file-input').click()">写真からQR読込</button>
+                <input type="file" id="qr-file-input" accept="image/*" onchange="readQrFromFile(event)" style="display:none">
+                <div id="qr-camera-area">
+                    <canvas id="v-canvas"></canvas>
+                </div>
+            </div>
+            <div style="height:60px;"></div>
         </div>
-        <div style="height:40px;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script>
-        const STORAGE_KEY = 'strawberry_config_v118'; 
+        const STORAGE_KEY = 'strawberry_config_v119'; 
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4588-b7f5-ea07361b26a8";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzoXz3vQvQOg6TIR0cshy5N6ysqWC-AODRzlCmN2Cr-WPK3hgOr3zCVPZ_kMgNqYu_U/exec";
@@ -173,7 +181,7 @@
             window.speechSynthesis.speak(uttr);
         }
 
-        function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('本体に保存しました'); }
+        function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRanges)); refreshSounds(); alert('設定を保存しました'); }
         function addRangeRow() { currentRanges.push({min:0,label:'新規格',audio:'3',audioMode:'mp3',ttsText:'',ttsVoice:'female',ttsRate:1.0,ttsPitch:1.0,colorName:'黒',images:[null,null,null,null]}); renderConfigList(); }
 
         async function syncToGas() {
@@ -208,6 +216,10 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 video.srcObject = stream; video.setAttribute("playsinline", true); video.play();
                 canvas.style.display = "block";
+                
+                // ★ V1.19修正: カメラ起動時にモニター位置まで自動スクロール
+                document.getElementById('qr-camera-area').scrollIntoView({ behavior: 'smooth' });
+
                 const tick = () => {
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
                         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
@@ -223,7 +235,7 @@
 
         function triggerEffect(match, isPreview = false) {
             const overlay = document.getElementById('flash-overlay');
-            overlay.style.zIndex = isPreview ? "700" : "500";
+            overlay.style.zIndex = isPreview ? "800" : "500";
             showFlash(match.label, match.colorName || "黒", match.images || []); 
             if (match.audioMode === "tts") speak(match.ttsText || match.label, match.ttsVoice, match.ttsRate || 1.0, match.ttsPitch || 1.0);
             else { const ck = toHalfWidth(match.audio); if (sounds[ck]) { sounds[ck].currentTime = 0; sounds[ck].play(); } }
@@ -282,7 +294,7 @@
                 });
             } catch (err) { alert("秤が見つかりません"); }
         };
-        document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; };
+        document.getElementById('settingsBtn').onclick = () => { renderConfigList(); document.getElementById('settings-modal').style.display = 'block'; window.scrollTo(0, 0); };
         document.getElementById('tareBtn').onclick = () => { if(bluetoothChar) bluetoothChar.writeValue(new TextEncoder().encode('1')); };
         document.getElementById('modePre').onclick = () => { currentMode="pre"; document.getElementById('modePre').classList.add('active'); document.getElementById('modeDirect').classList.remove('active'); };
         document.getElementById('modeDirect').onclick = () => { currentMode="direct"; document.getElementById('modeDirect').classList.add('active'); document.getElementById('modePre').classList.remove('active'); };
