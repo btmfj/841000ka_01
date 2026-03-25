@@ -76,7 +76,6 @@
     <div id="app-container">
         <div id="weight-section">
             <div id="app-title">はよ選果 V2.12</div>
-            <button id="fullscreenBtn" onclick="toggleFullscreen()" style="position: fixed; top: 10px; right: 10px; z-index: 1000; font-size: 18px; padding: 10px 16px; font-weight: bold; border-radius: 12px; border: 2px solid #d63031; background: rgba(255, 255, 255, 0.9); color: #d63031; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer;">全画面</button>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -156,25 +155,6 @@
         function loadVoices() { voices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja')); }
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
-
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().then(() => {
-                    document.getElementById('fullscreenBtn').innerText = "解除";
-                    document.getElementById('fullscreenBtn').style.background = "#d63031";
-                    document.getElementById('fullscreenBtn').style.color = "white";
-                }).catch(err => {
-                    alert(`全画面表示に失敗しました: ${err.message}`);
-                });
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                    document.getElementById('fullscreenBtn').innerText = "全画面";
-                    document.getElementById('fullscreenBtn').style.background = "rgba(255, 255, 255, 0.9)";
-                    document.getElementById('fullscreenBtn').style.color = "#d63031";
-                }
-            }
-        }
 
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
