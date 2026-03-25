@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>はよ選果 V2.07</title>
+    <title>はよ選果 V2.08</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -75,7 +75,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.07</div>
+            <div id="app-title">はよ選果 V2.08</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -285,15 +285,17 @@
                         imgCell.style.display = "flex";
                         
                         if (window.matchMedia("(orientation: landscape)").matches) {
-                            // 【横画面】左に文字(40%)、右に画像(60%)
-                            overlay.style.flexDirection = "row";
-                            fTextCell.style.width = "40%"; fTextCell.style.height = "100%";
-                            imgCell.style.width = "60%"; imgCell.style.height = "100%";
-                            
-                            // 横画面：デフォルト30vhから、文字数が増えるごとに縮小（スプリット内に収める）
-                            const landscapeFS = Math.max(8, 30 - (text.length > 1 ? (text.length - 1) * 6 : 0));
-                            fText.style.fontSize = landscapeFS + "vh"; 
-                            imgContainer.style.maxWidth = "100%";
+                        // 【横画面】左に文字(40%)、右に画像(60%)
+                        overlay.style.flexDirection = "row";
+                        fTextCell.style.width = "40%"; fTextCell.style.height = "100%";
+                        imgCell.style.width = "60%"; imgCell.style.height = "100%";
+                        
+                        // デフォルト60vhからスタート！
+                        // 1文字なら60vh、2文字で35vh、3文字で25vh...と急激に絞って枠(40%幅)を守る
+                        const landscapeFS = Math.max(10, 60 - (text.length > 1 ? (text.length - 1) * 25 : 0));
+                        fText.style.fontSize = landscapeFS + "vh"; 
+                        
+                        imgContainer.style.maxWidth = "100%";
                         } else {
                             // 【縦画面】上に文字(20%)、下に画像(80%)
                             overlay.style.flexDirection = "column";
