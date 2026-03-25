@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>はよ選果 V2.02</title>
+    <title>はよ選果 V2.03</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #ffe4e1; font-family: sans-serif; position: fixed; width: 100%; }
         #app-container { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; width: 100%; }
@@ -75,7 +75,7 @@
     <div id="keep-alive-pixel"></div>
     <div id="app-container">
         <div id="weight-section">
-            <div id="app-title">はよ選果 V2.02</div>
+            <div id="app-title">はよ選果 V2.03</div>
             <div id="status">Bluetooth未接続</div>
             <div id="weight">0.0<span>g</span></div>
             <div id="diff-display">--.- g 減</div>
@@ -270,7 +270,7 @@
                 const fontSize = Math.max(10, 25 - (text.length > 1 ? (text.length - 1) * 5 : 0));
                 fText.style.fontSize = fontSize + "vh"; 
             } else {
-                fTextCell.style.height = "10%"; fTextCell.style.display = "flex"; imgCell.style.display = "flex"; fText.style.fontSize = "14vh";
+                fTextCell.style.height = "15%"; fTextCell.style.display = "flex"; imgCell.style.display = "flex"; fText.style.fontSize = "12vh";
                 // 横画面（landscape）の時は、画像の最大幅（max-width: 80vh）を解除して、画面いっぱいに広げる
                 if (window.matchMedia("(orientation: landscape)").matches) {
                     imgContainer.style.maxWidth = "none";
