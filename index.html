@@ -306,8 +306,12 @@
                             ['tl', 'tr', 'bl', 'br'].forEach((pos, i) => {
                                 const gridItem = document.createElement('div');
                                 gridItem.style.display = "flex";
-                                gridItem.style.justifyContent = "center"; 
-                                gridItem.style.alignItems = "center";
+                                // 画像の位置に合わせて、内側（中央）に寄せる
+                                if (pos === 'tl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-end"; }   // 左上→右下寄
+                                if (pos === 'tr') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-end"; } // 右上→左下寄
+                                if (pos === 'bl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-start"; }   // 左下→右上寄
+                                if (pos === 'br') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-start"; } // 右下→左上寄
+        
                                 if (imgArray[i]) { 
                                     const img = document.createElement('img'); 
                                     img.src = imgArray[i]; 
