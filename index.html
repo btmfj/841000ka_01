@@ -257,42 +257,81 @@
         }
 
         function showFlash(text, colorName, imgArray) {
-            const overlay = document.getElementById('flash-overlay');
-            const fTextCell = document.getElementById('flash-text-cell'), fText = document.getElementById('flash-text');
-            const imgCell = document.getElementById('flash-img-cell'), imgContainer = document.getElementById('flash-img-container');
-            const bgColor = colorPalette[colorName] || "#000000";
-            const activeImages = imgArray.filter(src => src !== null);
-            overlay.style.backgroundColor = bgColor; fText.innerText = text;
-            imgContainer.innerHTML = ''; imgContainer.className = '';
-            if (currentMode === "pre" || activeImages.length === 0) {
-                fTextCell.style.height = "100%"; fTextCell.style.display = "flex"; imgCell.style.display = "none";
-                // 文字数に応じてサイズを計算（1文字なら25vh、増えるごとに縮小。最小でも10vhを確保）
-                const fontSize = Math.max(10, 25 - (text.length > 1 ? (text.length - 1) * 5 : 0));
-                fText.style.fontSize = fontSize + "vh"; 
-            } else {
-                fTextCell.style.height = "15%"; fTextCell.style.display = "flex"; imgCell.style.display = "flex"; fText.style.fontSize = "12vh";
-                // 横画面（landscape）の時は、画像の最大幅（max-width: 80vh）を解除して、画面いっぱいに広げる
-                if (window.matchMedia("(orientation: landscape)").matches) {
-                    imgContainer.style.maxWidth = "none";
-                } else {
-                    imgContainer.style.maxWidth = "80vh"; // 縦画面の時は元のサイズを維持
-                }
-                if (imgArray.length >= 3 && activeImages.length >= 3) {
-                    imgContainer.classList.add('grid-layout');
-                    ['tl', 'tr', 'bl', 'br'].forEach((pos, i) => {
-                        const gridItem = document.createElement('div');
-                        if (pos === 'tl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-end"; }
-                        if (pos === 'tr') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-end"; }
-                        if (pos === 'bl') { gridItem.style.justifyContent = "flex-end"; gridItem.style.alignItems = "flex-start"; }
-                        if (pos === 'br') { gridItem.style.justifyContent = "flex-start"; gridItem.style.alignItems = "flex-start"; }
-                        if (imgArray[i]) { const img = document.createElement('img'); img.src = imgArray[i]; img.className = 'flash-img-item'; gridItem.appendChild(img); }
-                        imgContainer.appendChild(gridItem);
-                    });
-                } else {
-                    activeImages.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'flash-img-item'; img.style.maxWidth = activeImages.length === 1 ? "100%" : "48%"; imgContainer.appendChild(img); });
-                }
-            }
+                    const overlay = document.getElementById('flash-overlay');
+                    const fTextCell = document.getElementById('flash-text-cell'), fText = document.getElementById('flash-text');
+                    const imgCell = document.getElementById('flash-img-cell'), imgContainer = document.getElementById('flash-img-container');
+                    const bgColor = colorPalette[colorName] || "#000000";
+                    const activeImages = imgArray.filter(src => src !== null);
+                    
+                    overlay.style.backgroundColor = bgColor; 
+                    fText.innerText = text;
+                    imgContainer.innerHTML = ''; 
+                    imgContainer.className = '';
+                    
+                    // レイアウトのリセット
+                    overlay.style.flexDirection = "column"; // デフォルトは縦並び
+                    fTextCell.style.width = "100%";
+                    imgCell.style.width = "100%";
+        
+                    if (currentMode === "pre" || activeImages.length === 0) {
+                        // 【事前選果 or 画像なし】全画面文字
+                        fTextCell.style.height = "100%"; 
+                        fTextCell.style.display = "flex"; 
+                        imgCell.style.display = "none";
+                        const fontSize = Math.max(10, 25 - (text.length > 1 ? (text.length - 1) * 5 : 0));
+                        fText.style.fontSize = fontSize + "vh"; 
+                    } else {
+                        // 【直パック詰め】画像あり
+                        imgCell.style.display = "flex";
+                        
+                        if (window.matchMedia("(orientation: landscape)").matches) {
+                            // 【横画面】左に文字(40%)、右に画像(60%)
+                            overlay.style.flexDirection = "row";
+                            fTextCell.style.width = "40%"; fTextCell.style.height = "100%";
+                            imgCell.style.width = "60%"; imgCell.style.height = "100%";
+                            fText.style.fontSize = "20vh"; 
+                            imgContainer.style.maxWidth = "100%";
+                        } else {
+                            // 【縦画面】上に文字(20%)、下に画像(80%)
+                            overlay.style.flexDirection = "column";
+                            fTextCell.style.width = "100%"; fTextCell.style.height = "20%";
+                            imgCell.style.width = "100%"; imgCell.style.height = "80%";
+                            fText.style.fontSize = "14vh";
+                            imgContainer.style.maxWidth = "80vh";
+                        }
+        
+                        if (imgArray.length >= 3 && activeImages.length >= 3) {
+                            // 3枚以上の時は「田の字」
+                            imgContainer.classList.add('grid-layout');
+                            ['tl', 'tr', 'bl', 'br'].forEach((pos, i) => {
+                                const gridItem = document.createElement('div');
+                                gridItem.style.display = "flex";
+                                gridItem.style.justifyContent = "center"; 
+                                gridItem.style.alignItems = "center";
+                                if (imgArray[i]) { 
+                                    const img = document.createElement('img'); 
+                                    img.src = imgArray[i]; 
+                                    img.className = 'flash-img-item'; 
+                                    gridItem.appendChild(img); 
+                                }
+                                imgContainer.appendChild(gridItem);
+                            });
+                        } else {
+                            // 1〜2枚の時は横並び
+                            activeImages.forEach(src => { 
+                                const img = document.createElement('img'); 
+                                img.src = src; 
+                                img.className = 'flash-img-item'; 
+                                img.style.maxWidth = activeImages.length === 1 ? "100%" : "48%"; 
+                                imgContainer.appendChild(img); 
+                            });
+                        }
+                    }
+            
             overlay.style.display = 'flex';
+            if (window.flashTimer) clearTimeout(window.flashTimer);
+            window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1200 : 3500);
+        }            overlay.style.display = 'flex';
             if (window.flashTimer) clearTimeout(window.flashTimer);
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1200 : 3500);
         }
