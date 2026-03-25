@@ -274,12 +274,20 @@
                     imgCell.style.width = "100%";
         
                     if (currentMode === "pre" || activeImages.length === 0) {
-                        // 【事前選果 or 画像なし】全画面文字
-                        fTextCell.style.height = "100%"; 
-                        fTextCell.style.display = "flex"; 
-                        imgCell.style.display = "none";
-                        const fontSize = Math.max(10, 25 - (text.length > 1 ? (text.length - 1) * 5 : 0));
-                        fText.style.fontSize = fontSize + "vh"; 
+                    // 事前選果または画像なし：全画面文字
+                    overlay.style.flexDirection = "column";
+                    fTextCell.style.width = "100%"; fTextCell.style.height = "100%"; 
+                    fTextCell.style.display = "flex"; imgCell.style.display = "none";
+                    
+                    let fontSize;
+                    if (window.matchMedia("(orientation: landscape)").matches) {
+                        // 【横画面】さらに巨大化！1文字なら80vh、文字数増えてもガッツリ大きく
+                        fontSize = Math.max(15, 80 - (text.length > 1 ? (text.length - 1) * 20 : 0));
+                    } else {
+                        // 【縦画面】これまでの設定を維持
+                        fontSize = Math.max(10, 25 - (text.length > 1 ? (text.length - 1) * 5 : 0));
+                    }
+                    fText.style.fontSize = fontSize + "vh"; 
                     } else {
                         // 【直パック詰め】画像あり
                         imgCell.style.display = "flex";
