@@ -288,6 +288,9 @@
                             // 【横画面】左に文字(40%)、右に画像(60%)
                             overlay.style.flexDirection = "row";
                             fTextCell.style.width = "40%"; fTextCell.style.height = "100%";
+                            fTextCell.style.display = "flex";
+                            fTextCell.style.justifyContent = "center"; // 左右の中央
+                            fTextCell.style.alignItems = "center";     // 上下の中央
                             imgCell.style.width = "60%"; imgCell.style.height = "100%";
                             
                             // 文字数によるサイズ指定（マッチの指定通り）
