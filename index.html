@@ -331,9 +331,6 @@
             overlay.style.display = 'flex';
             if (window.flashTimer) clearTimeout(window.flashTimer);
             window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1200 : 3500);
-        }            overlay.style.display = 'flex';
-            if (window.flashTimer) clearTimeout(window.flashTimer);
-            window.flashTimer = setTimeout(() => { overlay.style.display = 'none'; }, currentMode === "pre" ? 1200 : 3500);
         }
 
         let bluetoothChar = null, stableWeight = 0, weightHistory = [];
