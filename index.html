@@ -168,6 +168,22 @@
         }
         window.onload = loadSettings;
 
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                // 全画面にする
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`全画面表示に失敗しました: ${err.message}`);
+                });
+                document.getElementById('fullscreenBtn').innerText = "解除";
+            } else {
+                // 全画面を解除する
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    document.getElementById('fullscreenBtn').innerText = "全画面";
+                }
+            }
+        }
+
         function refreshSounds() {
             sounds = {};
             currentRanges.forEach(r => { if ((!r.audioMode || r.audioMode === "mp3") && r.audio) { const ck = toHalfWidth(r.audio); if(!sounds[ck]) sounds[ck] = new Audio("./" + getFileName(ck)); } });
