@@ -159,6 +159,25 @@
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
 
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().then(() => {
+                    document.getElementById('fullscreenBtn').innerText = "解除";
+                    document.getElementById('fullscreenBtn').style.background = "#d63031";
+                    document.getElementById('fullscreenBtn').style.color = "white";
+                }).catch(err => {
+                    alert(`全画面表示に失敗しました: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    document.getElementById('fullscreenBtn').innerText = "全画面";
+                    document.getElementById('fullscreenBtn').style.background = "rgba(255, 255, 255, 0.9)";
+                    document.getElementById('fullscreenBtn').style.color = "#d63031";
+                }
+            }
+        }
+
         function loadSettings() {
             const saved = localStorage.getItem(STORAGE_KEY);
             currentRanges = saved ? JSON.parse(saved) : [{ min: 17.8, label: "2L", audio: "2L", audioMode: "mp3", ttsText: "ニエル", ttsVoice: "female", ttsRate: 1.0, ttsPitch: 1.0, colorName: "青", images: [null, null, null, null] }];
@@ -167,22 +186,6 @@
             refreshSounds();
         }
         window.onload = loadSettings;
-
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                // 全画面にする
-                document.documentElement.requestFullscreen().catch(err => {
-                    alert(`全画面表示に失敗しました: ${err.message}`);
-                });
-                document.getElementById('fullscreenBtn').innerText = "解除";
-            } else {
-                // 全画面を解除する
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                    document.getElementById('fullscreenBtn').innerText = "全画面";
-                }
-            }
-        }
 
         function refreshSounds() {
             sounds = {};
