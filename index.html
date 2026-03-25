@@ -289,14 +289,20 @@
                             overlay.style.flexDirection = "row";
                             fTextCell.style.width = "40%"; fTextCell.style.height = "100%";
                             imgCell.style.width = "60%"; imgCell.style.height = "100%";
-                            fText.style.fontSize = "20vh"; 
+                            
+                            // 横画面：デフォルト30vhから、文字数が増えるごとに縮小（スプリット内に収める）
+                            const landscapeFS = Math.max(8, 30 - (text.length > 1 ? (text.length - 1) * 6 : 0));
+                            fText.style.fontSize = landscapeFS + "vh"; 
                             imgContainer.style.maxWidth = "100%";
                         } else {
                             // 【縦画面】上に文字(20%)、下に画像(80%)
                             overlay.style.flexDirection = "column";
                             fTextCell.style.width = "100%"; fTextCell.style.height = "20%";
                             imgCell.style.width = "100%"; imgCell.style.height = "80%";
-                            fText.style.fontSize = "14vh";
+                            
+                            // 縦画面：5文字以上で見切れないよう、文字数に合わせて14vhから自動縮小
+                            const portraitFS = Math.max(6, 14 - (text.length > 4 ? (text.length - 4) * 2.5 : 0));
+                            fText.style.fontSize = portraitFS + "vh";
                             imgContainer.style.maxWidth = "80vh";
                         }
         
